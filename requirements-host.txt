@@ -1,0 +1,3 @@
+# Host-side dependencies (Kafka admin + Wikimedia producer). Spark jobs run in Docker.
+confluent-kafka==2.15.1
+requests==2.34.1
