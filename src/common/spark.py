@@ -20,9 +20,11 @@ def get_spark(app_name, kafka=False, driver_memory="5g"):
     builder = (
         SparkSession.builder
         .appName(app_name)
-        .master("local[*]")
+        # 8 concurrent tasks and small shuffle partitions: title.principals
+        # (100M rows) must fit in the memory of a single local driver
+        .master("local[8]")
         .config("spark.driver.memory", driver_memory)
-        .config("spark.sql.shuffle.partitions", "64")
+        .config("spark.sql.shuffle.partitions", "200")
         .config("spark.sql.adaptive.enabled", "true")
         .config("spark.sql.session.timeZone", "UTC")
     )
