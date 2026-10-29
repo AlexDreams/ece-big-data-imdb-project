@@ -6,7 +6,7 @@
 | ---- | ----- | --------------- |
 | Alexandre Garreau | alexandre.garreau@edu.ece.fr | AlexDreams |
 | Nicolas Donier | nicolas.donier@edu.ece.fr | reinoD |
-| Quentin Varet | quentin.varet@edu.ece.fr | Caent1 |
+| Quentin Varet | qt1dark@gmail.com | Caent1 |
 
 Group: gr-04 (Data & IA)
 
