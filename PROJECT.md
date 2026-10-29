@@ -6,7 +6,7 @@
 | ---- | ----- | --------------- |
 | Alexandre Garreau | alexandre.garreau@edu.ece.fr | AlexDreams |
 | Nicolas Donier | nicolas.donier@edu.ece.fr | reinoD |
-| Quentin Varet | TODO | Caent1 |
+| Quentin Varet | quentin.varet@edu.ece.fr | Caent1 |
 
 Group: gr-04 (Data & IA)
 
@@ -38,23 +38,71 @@ Raw files land in `data/raw/`, bronze Parquet tables in `data/bronze/<table>/`. 
 
 ### 3. Data preparation
 
-TODO
+```bash
+docker exec imdb-spark python -m src.preparation.missing_values   # % null/missing per column, top 5
+docker exec imdb-spark python -m src.preparation.quality_checks   # 31 data quality checks
+docker exec imdb-spark python -m src.preparation.clean_to_silver  # handling rules -> data/silver/
+```
+
+Results: `output/preparation/*.csv`. The silver layer is required by every following step.
 
 ### 4. Data exploration
 
-TODO
+```bash
+docker exec imdb-spark python -m src.exploration.questions         # all questions, or e.g. "q1 q6"
+```
+
+Results: `output/exploration/*.csv`. Question 6 looks up the original language of the successful films on
+Wikidata (cached in `data/external/`, resumable). The notebook `notebooks/exploration.ipynb` runs the
+preparation and exploration functions and displays their results (open it from JupyterLab, link given by
+`docker logs imdb-spark 2>&1 | grep token=`).
 
 ### 5. Data enrichment
 
-TODO
+```bash
+docker exec imdb-spark python -m src.enrichment.select_targets     # top 10 films per genre and year, 3 principals each
+docker exec imdb-spark python -m src.enrichment.fetch_wikipedia    # Wikidata + Wikipedia gathering (about 1h30, resumable)
+docker exec imdb-spark python -m src.enrichment.build_enriched     # cleaning, schema enforcement, join -> data/gold/
+```
+
+`fetch_wikipedia` accepts `--limit N` for a quick test. Results: `data/gold/enriched_films`,
+`data/gold/enriched_principals` and `output/enrichment/*.csv`.
 
 ### 6. Streaming
 
-TODO
+Host environment for the Kafka producer (once):
+
+```bash
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements-host.txt   # Linux/macOS: .venv/bin/python
+```
+
+Then, in three terminals:
+
+```bash
+# terminal 1: create the topic (add --reset to start from an empty topic)
+.venv/Scripts/python -m src.streaming.admin
+# terminal 2: Spark Structured Streaming job, runs for 20 minutes
+docker exec imdb-spark python -m src.streaming.imdb_wiki_stream --minutes 20
+# terminal 3: Wikimedia -> Kafka producer, started right after the Spark job
+.venv/Scripts/python -m src.streaming.producer --minutes 20
+```
+
+Once both have finished:
+
+```bash
+docker exec imdb-spark python -m src.streaming.report
+```
+
+Results: `data/streaming/` (Parquet sinks and checkpoints) and `output/streaming/*.csv`.
 
 ### 7. Open question
 
-TODO
+```bash
+docker exec imdb-spark python -m src.open_question.director_actor_duos
+```
+
+Results: `output/open_question/*.csv`.
 
 ### Stop the environment
 
