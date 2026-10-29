@@ -112,4 +112,17 @@ docker compose down
 
 ## AI / LLM usage declaration
 
-TODO — to be completed precisely before submission (tool used and tasks that relied on it).
+Tool used: **Claude Code** (Anthropic, Claude Opus 5.5 model), as a coding assistant.
+
+Tasks that relied on it:
+
+- Docker Compose environment and Spark configuration (including memory tuning for `title.principals`)
+- Code of the pipeline modules under `src/` (ingestion, preparation, exploration, enrichment, streaming,
+  open question) and of the notebook `notebooks/exploration.ipynb`
+- Debugging (out of memory errors, Wikidata rate limiting, original language lookup)
+- Writing of `README.md` and of this execution guide
+
+Not used for: the explanations, reasoning and methodology write-ups of `REPORT.md`, which were written by the
+group members.
+
+TODO (group): review and adjust this list before submission.
