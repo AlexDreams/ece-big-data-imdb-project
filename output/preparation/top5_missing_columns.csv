@@ -1,0 +1,6 @@
+table,column,total_rows,null_count,empty_count,missing_pct
+title.akas,attributes,59957982,59641573,0,99.472
+title.basics,endYear,12902085,12738467,0,98.732
+name.basics,deathYear,15768361,15503465,0,98.32
+name.basics,birthYear,15768361,15083690,0,95.658
+title.principals,job,102539871,82740671,0,80.691
