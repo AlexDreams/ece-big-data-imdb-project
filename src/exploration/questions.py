@@ -76,7 +76,45 @@ def q2_top3_genres(spark):
     write_result(top3, SECTION, "q2_top3_genres_per_year", show=15)
 
 
-QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres}
+def q3_top3_vs_rest(spark):
+    ranked = ranked_genres(spark).withColumn(
+        "group", F.when(F.col("rank") <= 3, "top3").otherwise("rest")
+    )
+    per_year = ranked.groupBy("year", "group").agg(
+        F.sum("n_movies").alias("n_movies"),
+        F.sum("total_votes").alias("total_votes"),
+        F.countDistinct("genre").alias("n_genres"),
+    )
+    w = Window.partitionBy("year")
+    per_year = per_year.withColumn(
+        "vote_share_pct",
+        F.round(100 * F.col("total_votes") / F.sum("total_votes").over(w), 1),
+    ).withColumn(
+        "votes_per_movie", F.round(F.col("total_votes") / F.col("n_movies"), 0)
+    ).orderBy("year", "group")
+    write_result(per_year, SECTION, "q3_top3_vs_rest_per_year", show=12)
+
+    # Rating is averaged per movie, so it is computed from movie-level data
+    mg = movie_genres(feature_movies(spark)).filter(F.col("startYear").between(*YEARS))
+    labelled = mg.join(
+        ranked.select(F.col("year").alias("startYear"), "genre", "group"),
+        ["startYear", "genre"],
+    )
+    overall = labelled.groupBy("group").agg(
+        F.round(F.avg("averageRating"), 2).alias("avg_rating"),
+        F.round(F.avg("numVotes"), 0).alias("avg_votes_per_movie"),
+        F.round(F.avg("runtimeMinutes"), 1).alias("avg_runtime"),
+    )
+    write_result(overall, SECTION, "q3_top3_vs_rest_overall")
+    frequency = (
+        ranked.filter("rank <= 3").groupBy("genre")
+        .agg(F.count("*").alias("years_in_top3"))
+        .orderBy(F.desc("years_in_top3"))
+    )
+    write_result(frequency, SECTION, "q3_genre_frequency_in_top3")
+
+
+QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres, "q3": q3_top3_vs_rest}
 
 
 def main(selected):
