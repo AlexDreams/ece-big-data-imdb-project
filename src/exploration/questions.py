@@ -180,7 +180,54 @@ def q5_declining_series(spark):
     write_result(result, SECTION, "q5_declining_series")
 
 
-QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres, "q3": q3_top3_vs_rest, "q4": q4_one_hit_directors, "q5": q5_declining_series}
+def q6_multilingual_actors(spark):
+    """Original languages come from Wikidata (see original_language.py)."""
+    successful = movies(spark, SUCCESS_VOTES).filter(
+        F.col("averageRating") >= SUCCESS_RATING
+    )
+    ids = [r.tconst for r in successful.select("tconst").collect()]
+    EXTERNAL_DIR.mkdir(parents=True, exist_ok=True)
+    with open(IDS_FILE, "w", encoding="utf-8") as f:
+        f.write("tconst\n" + "\n".join(ids) + "\n")
+    fetch_languages(ids)   # resumable: only ids not fetched yet are queried
+    # Wikidata lists every language spoken in a film; keep films with a single
+    # original language so that "a film originally in French" is unambiguous
+    languages = load_languages(spark)
+    single = languages.groupBy("tconst").count().filter("count = 1").select("tconst")
+    write_result(
+        languages.groupBy("tconst").count()
+        .agg(F.count("*").alias("films_with_language"),
+             F.sum((F.col("count") == 1).cast("int")).alias("single_language_films")),
+        SECTION, "q6_single_vs_multi_language",
+    )
+    languages = languages.join(single, "tconst", "left_semi")
+    hits = successful.join(languages, "tconst")
+    write_result(
+        successful.join(languages.select("tconst").distinct(), "tconst", "left_semi")
+        .agg(F.count("*").alias("films_with_language"))
+        .crossJoin(successful.agg(F.count("*").alias("successful_films"))),
+        SECTION, "q6_language_coverage",
+    )
+    per_actor = (
+        acting_credits(spark).join(hits, "tconst")
+        .groupBy("nconst").agg(
+            F.countDistinct("language").alias("n_languages"),
+            F.sort_array(F.collect_set("language")).alias("languages"),
+            F.count("*").alias("n_successful_movies"),
+        )
+        .filter("n_languages >= 2")
+        .join(names(spark), "nconst")
+        .select("nconst", "primaryName", "n_languages", "languages",
+                "n_successful_movies")
+        .withColumn("languages", F.concat_ws("|", "languages"))
+        .orderBy(F.desc("n_languages"), F.desc("n_successful_movies"))
+    )
+    write_result(per_actor, SECTION, "q6_actors_2plus_languages", show=10)
+    write_result(per_actor.filter("n_languages >= 3"), SECTION,
+                 "q6_actors_3plus_languages", show=20)
+
+
+QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres, "q3": q3_top3_vs_rest, "q4": q4_one_hit_directors, "q5": q5_declining_series, "q6": q6_multilingual_actors}
 
 
 def main(selected):
