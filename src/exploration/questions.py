@@ -142,7 +142,45 @@ def q4_one_hit_directors(spark):
     write_result(result, SECTION, "q4_one_hit_directors")
 
 
-QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres, "q3": q3_top3_vs_rest, "q4": q4_one_hit_directors}
+def q5_declining_series(spark):
+    episodes = read_silver(spark, "title_episode").filter(
+        F.col("seasonNumber").isNotNull()
+    )
+    ratings = read_silver(spark, "title_ratings").select("tconst", "averageRating")
+    season_size = episodes.groupBy("parentTconst", "seasonNumber").agg(
+        F.count("*").alias("n_episodes")
+    )
+    eligible = (
+        season_size.groupBy("parentTconst").agg(
+            F.sum((F.col("n_episodes") >= 10).cast("int")).alias("n_full_seasons"),
+            F.max("seasonNumber").alias("last_season"),
+        ).filter(F.col("n_full_seasons") >= 3)
+    )
+    rated = episodes.join(ratings, "tconst").join(eligible, "parentTconst")
+    per_series = rated.groupBy("parentTconst", "last_season", "n_full_seasons").agg(
+        F.min("averageRating").alias("worst"),
+        F.max("averageRating").alias("best"),
+        F.min(F.when(F.col("seasonNumber") == F.col("last_season"),
+                     F.col("averageRating"))).alias("worst_last_season"),
+        F.max(F.when(F.col("seasonNumber") <= 2, F.col("averageRating")))
+        .alias("best_first_two"),
+    )
+    titles = read_silver(spark, "title_basics").select(
+        F.col("tconst").alias("parentTconst"), "primaryTitle", "startYear"
+    )
+    result = (
+        per_series
+        .filter((F.col("worst_last_season") == F.col("worst"))
+                & (F.col("best_first_two") == F.col("best")))
+        .join(titles, "parentTconst")
+        .select("parentTconst", "primaryTitle", "startYear", "n_full_seasons",
+                "last_season", "best", "worst")
+        .orderBy(F.desc(F.col("best") - F.col("worst")))
+    )
+    write_result(result, SECTION, "q5_declining_series")
+
+
+QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres, "q3": q3_top3_vs_rest, "q4": q4_one_hit_directors, "q5": q5_declining_series}
 
 
 def main(selected):
