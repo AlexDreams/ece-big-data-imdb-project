@@ -114,7 +114,35 @@ def q3_top3_vs_rest(spark):
     write_result(frequency, SECTION, "q3_genre_frequency_in_top3")
 
 
-QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres, "q3": q3_top3_vs_rest}
+def q4_one_hit_directors(spark):
+    directed = (
+        read_silver(spark, "title_directors")
+        .join(movies(spark, MIN_VOTES), "tconst")
+    )
+    per_director = directed.groupBy("nconst").agg(
+        F.sum((F.col("averageRating") >= 8.0).cast("int")).alias("n_hits"),
+        F.count("*").alias("n_movies"),
+        F.avg(F.when(F.col("averageRating") < 8.0, F.col("averageRating")))
+        .alias("avg_other_rating"),
+        F.max(F.when(F.col("averageRating") >= 8.0, F.struct(
+            "averageRating", "primaryTitle", "startYear"))).alias("hit"),
+    )
+    result = (
+        per_director
+        .filter((F.col("n_hits") == 1) & (F.col("n_movies") - 1 >= 2)
+                & (F.col("avg_other_rating") <= 6.0))
+        .join(names(spark), "nconst")
+        .select("nconst", "primaryName", (F.col("n_movies") - 1).alias("n_other_movies"),
+                F.round("avg_other_rating", 2).alias("avg_other_rating"),
+                F.col("hit.primaryTitle").alias("hit_title"),
+                F.col("hit.startYear").alias("hit_year"),
+                F.col("hit.averageRating").alias("hit_rating"))
+        .orderBy(F.desc("n_other_movies"))
+    )
+    write_result(result, SECTION, "q4_one_hit_directors")
+
+
+QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres, "q3": q3_top3_vs_rest, "q4": q4_one_hit_directors}
 
 
 def main(selected):
