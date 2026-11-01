@@ -1,0 +1,9 @@
+career_profile,situation,n_people,n_titles,avg_rating
+actor+director,multiple roles on the title,356,897,5.692
+actor+director,single role on the title,437,9839,5.979
+actor+director+writer,multiple roles on the title,1479,11309,5.868
+actor+director+writer,single role on the title,1388,20894,5.877
+actor+writer,multiple roles on the title,1065,3458,5.642
+actor+writer,single role on the title,1193,18265,5.843
+director+writer,multiple roles on the title,7921,40809,6.001
+director+writer,single role on the title,5744,30680,5.972

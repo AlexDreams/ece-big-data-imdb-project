@@ -265,7 +265,76 @@ def q7_early_peak_actors(spark):
     write_result(result, SECTION, "q7_early_peak_actors")
 
 
-QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres, "q3": q3_top3_vs_rest, "q4": q4_one_hit_directors, "q5": q5_declining_series, "q6": q6_multilingual_actors, "q7": q7_early_peak_actors}
+def q8_multi_talented(spark):
+    film_ids = movies(spark, MIN_VOTES).select("tconst", "averageRating")
+    principals = read_silver(spark, "title_principals").filter(
+        F.size("dq_flags") == 0
+    ).select(
+        "tconst", "nconst",
+        F.when(F.col("category").isin("actor", "actress"), "actor")
+        .when(F.col("category") == "director", "director")
+        .when(F.col("category") == "writer", "writer").alias("role"),
+    ).filter(F.col("role").isNotNull())
+    crew = (
+        read_silver(spark, "title_directors").withColumn("role", F.lit("director"))
+        .unionByName(read_silver(spark, "title_writers").withColumn("role", F.lit("writer")))
+    )
+    roles = principals.unionByName(crew).dropDuplicates().join(film_ids, "tconst")
+    per_title = roles.groupBy("nconst", "tconst", "averageRating").agg(
+        F.sort_array(F.collect_set("role")).alias("roles")
+    ).withColumn("n_roles", F.size("roles"))
+    talents = (
+        roles.groupBy("nconst", "role").agg(F.countDistinct("tconst").alias("n"))
+        .filter("n >= 3")
+        .groupBy("nconst").agg(F.sort_array(F.collect_set("role")).alias("career_roles"))
+        .filter(F.size("career_roles") >= 2)
+    )
+    multi = per_title.join(talents, "nconst")
+    comparison = multi.groupBy(
+        F.concat_ws("+", "career_roles").alias("career_profile"),
+        F.when(F.col("n_roles") >= 2, "multiple roles on the title")
+        .otherwise("single role on the title").alias("situation"),
+    ).agg(
+        F.countDistinct("nconst").alias("n_people"),
+        F.count("*").alias("n_titles"),
+        F.round(F.avg("averageRating"), 3).alias("avg_rating"),
+    ).orderBy("career_profile", "situation")
+    write_result(comparison, SECTION, "q8_multi_role_vs_single_role")
+    per_person = (
+        multi.groupBy("nconst").agg(
+            F.avg(F.when(F.col("n_roles") >= 2, F.col("averageRating"))).alias("avg_multi"),
+            F.avg(F.when(F.col("n_roles") == 1, F.col("averageRating"))).alias("avg_single"),
+            F.sum((F.col("n_roles") >= 2).cast("int")).alias("n_multi_titles"),
+        )
+        .filter(F.col("avg_multi").isNotNull() & F.col("avg_single").isNotNull())
+    )
+    write_result(
+        per_person.agg(
+            F.count("*").alias("n_people"),
+            F.round(F.avg(F.col("avg_multi") - F.col("avg_single")), 3)
+            .alias("mean_rating_gap_multi_minus_single"),
+            F.round(100 * F.avg((F.col("avg_multi") > F.col("avg_single")).cast("int")), 1)
+            .alias("pct_people_better_in_multi"),
+        ),
+        SECTION, "q8_per_person_gap",
+    )
+    write_result(
+        per_person.join(names(spark), "nconst")
+        .filter("n_multi_titles >= 5")
+        .select("primaryName", "n_multi_titles",
+                F.round("avg_multi", 2).alias("avg_multi"),
+                F.round("avg_single", 2).alias("avg_single"))
+        .orderBy(F.desc("n_multi_titles")),
+        SECTION, "q8_top_multi_talented",
+    )
+
+
+QUESTIONS = {
+    "q1": q1_runtime_outliers, "q2": q2_top3_genres, "q3": q3_top3_vs_rest,
+    "q4": q4_one_hit_directors, "q5": q5_declining_series,
+    "q6": q6_multilingual_actors, "q7": q7_early_peak_actors,
+    "q8": q8_multi_talented,
+}
 
 
 def main(selected):
