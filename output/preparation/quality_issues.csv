@@ -1,0 +1,32 @@
+table,check,description,violations,base_rows,violation_pct
+name.basics,death_before_birth,deathYear < birthYear,27,15768361,0.0002
+name.basics,implausible_lifespan,deathYear - birthYear > 120,2,15768361,0.0
+name.basics,alive_over_120,no deathYear and birthYear < 1906,2793,15768361,0.0177
+name.basics,year_in_future,birthYear or deathYear > 2026,0,15768361,0.0
+name.basics,non_numeric_year,birthYear/deathYear present but not an integer,0,15768361,0.0
+name.basics,duplicate_nconst,nconst appearing more than once,0,15768361,0.0
+title.basics,duplicate_tconst,tconst appearing more than once,0,12902085,0.0
+title.basics,end_before_start,endYear < startYear,0,12902085,0.0
+title.basics,runtime_non_positive,runtimeMinutes <= 0,4,12902085,0.0
+title.basics,runtime_over_24h,runtimeMinutes > 1440,209,12902085,0.0016
+title.basics,start_year_future,startYear > 2026 (announced titles),5213,12902085,0.0404
+title.basics,invalid_is_adult,"isAdult not in (0, 1)",0,12902085,0.0
+title.basics,non_numeric_runtime,runtimeMinutes present but not an integer,0,12902085,0.0
+title.basics,movie_without_genre,titleType = movie and no genres,77821,12902085,0.6032
+title.ratings,rating_out_of_range,"averageRating not in [1, 10]",0,1726141,0.0
+title.ratings,non_positive_votes,numVotes <= 0,0,1726141,0.0
+title.ratings,orphan_tconst,tconst not in title.basics,0,1726141,0.0
+title.principals,orphan_tconst,tconst not in title.basics,0,102539871,0.0
+title.principals,orphan_nconst,nconst not in name.basics,7174,102539871,0.007
+title.principals,duplicate_tconst_ordering,"(tconst, ordering) appearing more than once",0,102539871,0.0
+title.principals,died_before_title,principal died > 2 years before the title start (non archive roles),229691,102539871,0.224
+title.principals,born_after_title,principal born after the title start,3110,102539871,0.003
+title.crew,orphan_directors,directors id not in name.basics,420,9569644,0.0044
+title.crew,orphan_writers,writers id not in name.basics,1146,15203836,0.0075
+title.crew,orphan_tconst,tconst not in title.basics,0,12902085,0.0
+title.episode,orphan_parent,parentTconst not in title.basics,5,9980994,0.0001
+title.episode,orphan_episode,tconst not in title.basics,0,9980994,0.0
+title.episode,parent_not_series,parent is not a tvSeries / tvMiniSeries,0,9980994,0.0
+title.episode,non_numeric_season,seasonNumber present but not an integer,0,9980994,0.0
+title.akas,orphan_title_id,titleId not in title.basics,33,59957982,0.0001
+title.akas,invalid_is_original,"isOriginalTitle not in (0, 1)",0,59957982,0.0
