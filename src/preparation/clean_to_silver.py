@@ -104,10 +104,16 @@ def clean_principals(spark, titles, names):
     return timeline.drop("startYear", "birthYear", "deathYear")
 
 
+def crew_pairs(spark, role):
+    """(tconst, nconst) pairs of one crew role, as listed in title.crew."""
+    return typed(spark, "title.crew").select(
+        "tconst", F.explode(split_list(role)).alias("nconst")
+    )
+
+
 def crew_bridge(spark, role, titles, names):
     return (
-        typed(spark, "title.crew")
-        .select("tconst", F.explode(split_list(role)).alias("nconst"))
+        crew_pairs(spark, role)
         .dropDuplicates()
         .join(titles.select("tconst"), "tconst", "left_semi")
         .join(names.select("nconst"), "nconst", "left_semi")
@@ -145,14 +151,15 @@ def save(df, name):
 def run(spark):
     summary = []
 
-    def persist(df, name, bronze_table=None):
+    def persist(df, name, bronze_table=None, before_df=None):
         path = save(df, name)
         out = spark.read.parquet(str(path)).count()
-        before = (
-            typed(spark, bronze_table).count() if bronze_table else None
-        )
+        # bridge tables have no bronze table: count the pairs before cleaning
+        if before_df is None:
+            before_df = typed(spark, bronze_table)
+        before = before_df.count()
         summary.append((name, before, out))
-        print(f"{name:<20} {before or '-':>12} -> {out:,}")
+        print(f"{name:<20} {before:>12,} -> {out:,}")
 
     names_path = save(clean_names(spark), table_dir_name("name.basics"))
     titles_path = save(clean_titles(spark), table_dir_name("title.basics"))
@@ -168,8 +175,9 @@ def run(spark):
     persist(clean_episodes(spark, titles),
             table_dir_name("title.episode"), "title.episode")
     persist(clean_akas(spark, titles), table_dir_name("title.akas"), "title.akas")
-    persist(crew_bridge(spark, "directors", titles, names), "title_directors")
-    persist(crew_bridge(spark, "writers", titles, names), "title_writers")
+    for role in ("directors", "writers"):
+        persist(crew_bridge(spark, role, titles, names), f"title_{role}",
+                before_df=crew_pairs(spark, role))
 
     result = spark.createDataFrame(
         summary, "table string, rows_before long, rows_after long"
