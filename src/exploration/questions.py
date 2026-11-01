@@ -54,7 +54,29 @@ def q1_runtime_outliers(spark):
     )
 
 
-QUESTIONS = {"q1": q1_runtime_outliers}
+def genre_year_stats(spark):
+    mg = movie_genres(feature_movies(spark)).filter(
+        F.col("startYear").between(*YEARS)
+    )
+    return mg.groupBy(F.col("startYear").alias("year"), "genre").agg(
+        F.count("*").alias("n_movies"),
+        F.sum("numVotes").alias("total_votes"),
+        F.round(F.avg("averageRating"), 2).alias("avg_rating"),
+    )
+
+
+def ranked_genres(spark):
+    """Popularity of a genre in a year = total IMDb votes of its feature films."""
+    w = Window.partitionBy("year").orderBy(F.desc("total_votes"))
+    return genre_year_stats(spark).withColumn("rank", F.row_number().over(w))
+
+
+def q2_top3_genres(spark):
+    top3 = ranked_genres(spark).filter("rank <= 3").orderBy("year", "rank")
+    write_result(top3, SECTION, "q2_top3_genres_per_year", show=15)
+
+
+QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres}
 
 
 def main(selected):
