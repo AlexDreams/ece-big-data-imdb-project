@@ -227,7 +227,45 @@ def q6_multilingual_actors(spark):
                  "q6_actors_3plus_languages", show=20)
 
 
-QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres, "q3": q3_top3_vs_rest, "q4": q4_one_hit_directors, "q5": q5_declining_series, "q6": q6_multilingual_actors}
+def q7_early_peak_actors(spark):
+    films = acting_credits(spark).join(
+        movies(spark, MIN_VOTES).filter(F.col("startYear").isNotNull()), "tconst"
+    )
+    career = films.groupBy("nconst").agg(
+        F.min("startYear").alias("first_year"),
+        F.max("startYear").alias("last_year"),
+        F.count("*").alias("n_movies"),
+        # best rated movie; earliest one on ties
+        F.max(F.struct("averageRating", -F.col("startYear"))).alias("peak"),
+    ).withColumn("span", F.col("last_year") - F.col("first_year"))
+    career = career.filter((F.col("span") >= 20) & (F.col("n_movies") >= 15))
+    halves = (
+        films.join(career.select("nconst", "first_year", "span"), "nconst")
+        .withColumn("first_half",
+                    F.col("startYear") <= F.col("first_year") + F.col("span") / 2)
+        .groupBy("nconst").agg(
+            F.avg(F.when(F.col("first_half"), F.col("averageRating"))).alias("avg_first_half"),
+            F.avg(F.when(~F.col("first_half"), F.col("averageRating"))).alias("avg_second_half"),
+        )
+    )
+    result = (
+        career.join(halves, "nconst")
+        .withColumn("peak_year", -F.col("peak.col2"))
+        .withColumn("peak_position",
+                    F.round((F.col("peak_year") - F.col("first_year")) / F.col("span"), 2))
+        .filter((F.col("peak_position") <= 1 / 3)
+                & (F.col("avg_first_half") > F.col("avg_second_half")))
+        .join(names(spark), "nconst")
+        .select("nconst", "primaryName", "first_year", "last_year", "n_movies",
+                "peak_year", F.col("peak.averageRating").alias("peak_rating"),
+                F.round("avg_first_half", 2).alias("avg_first_half"),
+                F.round("avg_second_half", 2).alias("avg_second_half"))
+        .orderBy(F.desc(F.col("avg_first_half") - F.col("avg_second_half")))
+    )
+    write_result(result, SECTION, "q7_early_peak_actors")
+
+
+QUESTIONS = {"q1": q1_runtime_outliers, "q2": q2_top3_genres, "q3": q3_top3_vs_rest, "q4": q4_one_hit_directors, "q5": q5_declining_series, "q6": q6_multilingual_actors, "q7": q7_early_peak_actors}
 
 
 def main(selected):
