@@ -11,7 +11,8 @@ from pyspark.sql import functions as F
 from src.common.io import read_silver, write_result
 from src.common.spark import get_spark
 from src.exploration.common import (
-    acting_credits, feature_movies, movie_genres, movies, names,
+    acting_credits, all_feature_movies, feature_movies, movie_genres, movies,
+    names,
 )
 from src.exploration.original_language import (
     EXTERNAL_DIR, IDS_FILE, fetch as fetch_languages, load_languages,
@@ -25,8 +26,14 @@ SUCCESS_RATING, SUCCESS_VOTES = 7.0, 1000   # q6: definition of a successful fil
 
 
 def q1_runtime_outliers(spark):
-    """Feature films whose runtime differs notably from their genre average."""
-    mg = movie_genres(feature_movies(spark)).filter(F.col("runtimeMinutes").isNotNull())
+    """Feature films whose runtime differs notably from their genre average.
+
+    All feature films are used, rated or not: the runtime does not depend on
+    the rating (numVotes is null for unrated films).
+    """
+    mg = movie_genres(all_feature_movies(spark)).filter(
+        F.col("runtimeMinutes").isNotNull()
+    )
     stats = mg.groupBy("genre").agg(
         F.count("*").alias("n_movies"),
         F.round(F.avg("runtimeMinutes"), 1).alias("avg_runtime"),

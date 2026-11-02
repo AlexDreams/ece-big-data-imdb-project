@@ -25,6 +25,23 @@ def feature_movies(spark, min_votes=0):
     )
 
 
+def all_feature_movies(spark):
+    """All feature films (titleType = movie, > 40 min), rated or not.
+
+    Unlike feature_movies(), ratings are left-joined, so titles without any
+    IMDb rating are kept (averageRating and numVotes are then null).
+    """
+    titles = read_silver(spark, "title_basics").filter(
+        (F.col("titleType") == "movie")
+        & (F.col("runtimeMinutes") > FEATURE_MIN_RUNTIME)
+    )
+    ratings = read_silver(spark, "title_ratings")
+    return titles.join(ratings, "tconst", "left").select(
+        "tconst", "primaryTitle", "startYear", "runtimeMinutes", "genres",
+        "averageRating", "numVotes",
+    )
+
+
 def movie_genres(df):
     """One row per (movie, genre)."""
     return df.withColumn("genre", F.explode("genres")).drop("genres")
