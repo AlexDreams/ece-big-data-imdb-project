@@ -70,7 +70,8 @@ SELECT ?imdb ?item ?code ?label WHERE {{
 def fetch(ids):
     done = set()
     if OUT_FILE.exists():
-        done = {json.loads(l)["imdb_id"] for l in open(OUT_FILE, encoding="utf-8")}
+        done = {json.loads(line)["imdb_id"]
+                for line in open(OUT_FILE, encoding="utf-8")}
     todo = [i for i in ids if i not in done]
     print(f"{len(todo):,} films to look up on Wikidata")
     session = requests.Session()
