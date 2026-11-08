@@ -1,2 +1,2 @@
 matched_events,distinct_imdb_entities,first_event,last_event,avg_seconds_event_to_kafka
-136,104,2026-10-27 15:10:58,2026-10-27 15:30:53,5.2
+157,116,2026-11-08 15:22:28,2026-11-08 15:41:26,3.5

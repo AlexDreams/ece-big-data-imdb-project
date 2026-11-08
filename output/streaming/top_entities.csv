@@ -1,26 +1,26 @@
 entity_type,imdb_id,imdb_name,n_events,net_size_change,homonyms
-title,tt14218830,Abbott Elementary,6,1183,1
-title,tt27250815,Mechanic,6,95,1
-person,nm6654900,Soni Bringas,5,-25,1
-person,nm5837781,Michael Campion,4,-105,1
-person,nm0516750,John Locke,2,0,1
-title,tt0826606,Police,2,36,2
-title,tt0082527,X-Ray,2,0,1
-title,tt0070510,Paper Moon,2,0,1
-person,nm9202414,Ruhani Sharma,2,432,1
-person,nm3513533,Stephanie Hsu,2,-92,1
-person,nm0924210,Ben Whishaw,2,33,1
-person,nm0370085,Brad Hawkins,2,0,1
-title,tt3322314,Luke Cage,2,1212,1
-person,nm1481829,Jack McMullen,2,0,1
-title,tt0338325,Paparazzi,2,-10,3
-title,tt0118589,Glitter,2,0,1
-person,nm3091000,Ana Mena,2,-40,1
-title,tt0477916,Viva Cuba,2,-2,1
-person,nm0000479,Walter Koenig,2,127,1
-title,tt44090278,Baththa,1,0,1
-title,tt14016500,The Summer I Turned Pretty,1,-99,1
-person,nm0829576,Kristen Stewart,1,-74,1
-person,nm4043618,Tom Holland,1,-2,3
-person,nm0326854,André Gomes,1,-3,1
-person,nm1222836,Chad Smith,1,-1,1
+person,nm0686375,Michele Placido,5,542,1
+person,nm4054362,Sandra Wollner,4,14,1
+title,tt3895908,Seeds,4,42,1
+title,tt28635681,Gorre Puranam,4,1,1
+person,nm1112874,Chris Martin,4,-327,2
+title,tt0422720,Marie Antoinette,3,4196,4
+person,nm0001128,Alain Delon,3,339,1
+person,nm5114849,Rakul Preet Singh,3,92,1
+person,nm0588679,Joshua John Miller,3,439,1
+title,tt0078788,Apocalypse Now,3,2864,1
+person,nm0279896,Michael Fishman,3,-29,1
+title,tt33043892,Dexter: Resurrection,2,0,1
+title,tt0312528,The Cat in the Hat,2,1,1
+title,tt1552211,The Last Days of American Crime,2,-84,1
+person,nm0001268,Estelle Getty,2,0,1
+title,tt12343534,Jujutsu Kaisen,2,848,1
+title,tt0083658,Blade Runner,2,-2,1
+person,nm0492200,Marc Lavoine,2,399,1
+title,tt0052713,The Crimson Kimono,2,0,1
+title,tt32252772,Dexter: Original Sin,2,62,1
+person,nm0926915,Saskia Wickham,2,113,1
+title,tt0072684,Barry Lyndon,2,-54,1
+title,tt0106004,Frasier,2,-69,2
+person,nm1245863,Rafe Spall,2,367,1
+title,tt0029583,Snow White and the Seven Dwarfs,1,40,1
