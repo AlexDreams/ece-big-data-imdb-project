@@ -6,6 +6,8 @@ normalised title of a popular IMDb movie/series or the name of a person
 credited on one. When the page has a qualifier, it must be film related
 ("film", "TV series", "actor", "película", "Schauspieler", ...), otherwise
 songs, footballers or disambiguation pages with the same name would match.
+A title page without a qualifier must have at least two words: "Belfast" is
+the city, while "Abbott Elementary" is the series.
 The reference set is a static DataFrame joined to the stream.
 
 Late data: event time = Wikimedia `timestamp`; a watermark of
@@ -35,7 +37,7 @@ KAFKA_SERVERS = "kafka:19092"
 TOPIC = "wikistreams"
 STREAM_DIR = DATA_DIR / "streaming"
 MIN_VOTES = 1000
-WATERMARK_DELAY = "10 minutes"
+WATERMARK_DELAY = "2 minutes"
 TUMBLING = "5 minutes"
 SLIDING = ("10 minutes", "5 minutes")
 TRIGGER = "30 seconds"
@@ -158,11 +160,13 @@ def window_query(matched, window_col, name):
             F.count("*").alias("n_events"),
             F.approx_count_distinct("imdb_id").alias("n_entities"),
             F.sum(F.col("bot").cast("int")).alias("n_bot_events"),
-            F.sum("size_change").alias("net_size_change"),
+            F.sum((~F.col("bot")).cast("int")).alias("n_human_events"),
         )
         .select(F.col("window.start").alias("window_start"),
                 F.col("window.end").alias("window_end"), "entity_type",
-                "n_events", "n_entities", "n_bot_events", "net_size_change")
+                "n_events", "n_entities", "n_bot_events", "n_human_events",
+                "net_size_change")
+
         .writeStream.format("parquet")
         .option("path", str(STREAM_DIR / name))
         .option("checkpointLocation", str(STREAM_DIR / "checkpoints" / name))
@@ -183,11 +187,11 @@ def main():
     events = parsed_stream(spark).withWatermark("event_time", WATERMARK_DELAY)
     matched = (
         events.join(F.broadcast(ref), "match_key")
-        .filter(
-            F.col("qualifier").isNull()
-            | ((F.col("entity_type") == "title") & F.col("qualifier").rlike(TITLE_QUALIFIER))
-            | ((F.col("entity_type") == "person") & F.col("qualifier").rlike(PERSON_QUALIFIER))
-        )
+        .filter((F.col("entity_type") == "title")
+             & (F.col("qualifier").rlike(TITLE_QUALIFIER)
+                | (F.col("qualifier").isNull() & F.col("match_key").contains(" "))))
+            | ((F.col("entity_type") == "person")
+               & (F.col("qualifier").isNull() | F.col("qualifier").rlike(PERSON_QUALIFIER)))
     )
 
     queries = [
