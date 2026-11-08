@@ -109,7 +109,8 @@ def main():
                             F.col("primaryName").alias("actor_name")), "actor")
         .select("director_name", "actor_name", "n_films", "avg_rating",
                 "avg_vs_director_mean", "first_year", "last_year")
-        .orderBy(F.desc("n_films"), F.desc("avg_rating")).limit(30),
+        .orderBy(F.desc("n_films"), F.desc("avg_rating"),
+                 "director_name", "actor_name").limit(30),
         SECTION, "top_recurring_duos",
     )
     spark.stop()
