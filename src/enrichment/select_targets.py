@@ -1,13 +1,15 @@
 """Select the films and principals to enrich (Spark).
 
 Films: feature films released in [YEAR_MIN, YEAR_MAX], top TOP_N per genre per
-year by number of IMDb votes. Principals: the first N_PRINCIPALS credits of
-each selected film (IMDb billing order). Every parameter can be raised up to
-the full dataset without code changes.
-Output: data/enrichment/targets/{films,people}.csv
-Usage: python -m src.enrichment.select_targets [--top-n 10] [--principals 3]
+year by number of IMDb votes. Candidates: the first N_CANDIDATES credits of
+each selected film (IMDb billing order); build_enriched.py then keeps three
+principals per film, those with a biography first. Every parameter can be
+raised up to the full dataset without code changes.
+Output: data/enrichment/targets/{films,credits}.csv
+Usage: python -m src.enrichment.select_targets [--top-n 10] [--candidates 5]
 """
 import argparse
+import shutil
 
 from pyspark.sql import Window
 from pyspark.sql import functions as F
@@ -33,35 +35,39 @@ def select_films(spark, top_n, year_min, year_max):
     )
 
 
-def select_people(spark, films, n_principals):
+def select_people(spark, films, n_candidates):
     w = Window.partitionBy("tconst").orderBy("ordering")
     return (
         read_silver(spark, "title_principals")
         .join(films.select("tconst"), "tconst")
         .withColumn("r", F.row_number().over(w))
-        .filter(F.col("r") <= n_principals)
+        .filter(F.col("r") <= n_candidates)
         .select("tconst", "nconst", "ordering", "category")
     )
 
 
 def write_csv(df, name):
+    """Write one CSV file with Spark, without collecting the rows on the driver."""
     TARGET_DIR.mkdir(parents=True, exist_ok=True)
-    pdf = df.toPandas()
-    pdf.to_csv(TARGET_DIR / f"{name}.csv", index=False)
-    print(f"{name}: {len(pdf):,} rows -> {TARGET_DIR / name}.csv")
+    tmp_dir = TARGET_DIR / f"_{name}_tmp"
+    df.coalesce(1).write.mode("overwrite").option("header", True).csv(str(tmp_dir))
+    target = TARGET_DIR / f"{name}.csv"
+    next(tmp_dir.glob("part-*.csv")).replace(target)
+    shutil.rmtree(tmp_dir)
+    print(f"{name} -> {target}")
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--top-n", type=int, default=10)
-    parser.add_argument("--principals", type=int, default=3)
+    parser.add_argument("--candidates", type=int, default=5)
     parser.add_argument("--year-min", type=int, default=1980)
     parser.add_argument("--year-max", type=int, default=2025)
     args = parser.parse_args()
 
     spark = get_spark("imdb_enrichment_targets")
     films = select_films(spark, args.top_n, args.year_min, args.year_max).cache()
-    credits = select_people(spark, films, args.principals)
+    credits = select_people(spark, films, args.candidates)
     write_csv(films, "films")
     write_csv(credits, "credits")
     spark.stop()

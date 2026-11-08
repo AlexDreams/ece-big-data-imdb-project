@@ -8,6 +8,7 @@ Output: data/gold/enriched_films, data/gold/enriched_principals,
         output/enrichment/*.csv
 Usage: python -m src.enrichment.build_enriched
 """
+from pyspark.sql import Window
 from pyspark.sql import functions as F
 from pyspark.sql.types import (
     ArrayType, LongType, StringType, StructField, StructType,
@@ -19,6 +20,7 @@ from src.common.spark import DATA_DIR, GOLD_DIR, get_spark
 RAW_DIR = DATA_DIR / "enrichment" / "raw"
 TARGET_DIR = DATA_DIR / "enrichment" / "targets"
 MIN_TEXT_LENGTH = 50
+N_PRINCIPALS = 3
 S = StringType()
 
 WIKIDATA_SCHEMA = StructType([
@@ -79,7 +81,9 @@ def lineage(wp="wp", wd="wd"):
         permalink(c(wp, "source_revision_id")).alias("source_permalink"),
         c(wd, "wikidata_url").alias("wikidata_url"),
         F.when(c(wp, "source_url").isNotNull(), c(wp, "source_license")).alias("source_license"),
-        F.to_timestamp(F.coalesce(c(wp, "retrieved_at"), c(wd, "retrieved_at"))).alias("retrieved_at"),
+        F.to_timestamp(
+            F.coalesce(c(wp, "retrieved_at"), c(wd, "retrieved_at"))
+        ).alias("retrieved_at"),
     ]
 
 
@@ -115,7 +119,7 @@ def build_principals(spark):
     wd = read_jsonl(spark, "wikidata_people", WIKIDATA_SCHEMA).alias("wd")
     wp = read_jsonl(spark, "wikipedia_people", WIKIPEDIA_SCHEMA).alias("wp")
     bio = clean_text(F.col("wp.biography"))
-    return (
+    principals = (
         credits.alias("c")
         .join(people.alias("p"), "nconst", "left")
         .join(wd, F.col("c.nconst") == F.col("wd.imdb_id"), "left")
@@ -135,6 +139,12 @@ def build_principals(spark):
                 F.when(bio.isNull(), F.lit("biography too short or empty")),
             ).alias("note"),
         )
+    )
+    # candidates with a biography first, then billing order
+    w = Window.partitionBy("tconst").orderBy(F.col("biography").isNull(), "ordering")
+    return (
+        principals.withColumn("r", F.row_number().over(w))
+        .filter(F.col("r") <= N_PRINCIPALS).drop("r")
     )
 
 
@@ -167,6 +177,11 @@ def main():
                  "enrichment", "films_notes")
     write_result(principals.groupBy("note").count().orderBy(F.desc("count")),
                  "enrichment", "principals_notes")
+    write_result(
+        principals.groupBy("tconst").agg(F.count("biography").alias("n_biographies"))
+        .groupBy("n_biographies").count().orderBy("n_biographies"),
+        "enrichment", "biographies_per_film",
+    )
     write_result(
         films.filter(F.col("synopsis").isNotNull())
         .select("tconst", "primaryTitle", "startYear",

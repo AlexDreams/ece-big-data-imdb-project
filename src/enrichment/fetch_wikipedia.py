@@ -163,7 +163,8 @@ SELECT ?imdb ?item ?article ?birth_date ?death_date ?birth_place ?citizenship WH
 
 def resolve_all(client, kind, ids, limit):
     out = RAW_DIR / f"wikidata_{kind}.jsonl"
-    todo = [i for i in ids if i not in done_ids(out)][:limit]
+    seen = done_ids(out)
+    todo = [i for i in ids if i not in seen][:limit]
     print(f"wikidata {kind}: {len(todo):,} ids to resolve")
     for n, batch in enumerate(chunks(todo, SPARQL_BATCH), 1):
         append(out, resolve_wikidata(client, batch, kind == "people"))
@@ -219,7 +220,8 @@ def wiki_record(imdb_id, wikidata, page):
 
 
 def fetch_films(client, limit):
-    resolved = [json.loads(l) for l in open(RAW_DIR / "wikidata_films.jsonl", encoding="utf-8")]
+    with open(RAW_DIR / "wikidata_films.jsonl", encoding="utf-8") as f:
+        resolved = [json.loads(line) for line in f]
     out = RAW_DIR / "wikipedia_films.jsonl"
     seen = done_ids(out)
     todo = [r for r in resolved if r["wikipedia_url"] and r["imdb_id"] not in seen][:limit]
@@ -239,7 +241,8 @@ def fetch_films(client, limit):
 
 
 def fetch_people(client, limit):
-    resolved = [json.loads(l) for l in open(RAW_DIR / "wikidata_people.jsonl", encoding="utf-8")]
+    with open(RAW_DIR / "wikidata_people.jsonl", encoding="utf-8") as f:
+        resolved = [json.loads(line) for line in f]
     out = RAW_DIR / "wikipedia_people.jsonl"
     seen = done_ids(out)
     todo = [r for r in resolved if r["wikipedia_url"] and r["imdb_id"] not in seen][:limit]
