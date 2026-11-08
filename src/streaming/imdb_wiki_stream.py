@@ -161,6 +161,7 @@ def window_query(matched, window_col, name):
             F.approx_count_distinct("imdb_id").alias("n_entities"),
             F.sum(F.col("bot").cast("int")).alias("n_bot_events"),
             F.sum((~F.col("bot")).cast("int")).alias("n_human_events"),
+            F.sum("size_change").alias("net_size_change"),
         )
         .select(F.col("window.start").alias("window_start"),
                 F.col("window.end").alias("window_end"), "entity_type",
@@ -187,11 +188,13 @@ def main():
     events = parsed_stream(spark).withWatermark("event_time", WATERMARK_DELAY)
     matched = (
         events.join(F.broadcast(ref), "match_key")
-        .filter((F.col("entity_type") == "title")
+        .filter(
+            ((F.col("entity_type") == "title")
              & (F.col("qualifier").rlike(TITLE_QUALIFIER)
                 | (F.col("qualifier").isNull() & F.col("match_key").contains(" "))))
             | ((F.col("entity_type") == "person")
                & (F.col("qualifier").isNull() | F.col("qualifier").rlike(PERSON_QUALIFIER)))
+        )
     )
 
     queries = [
