@@ -1,0 +1,3 @@
+dataset,rows,with_wikidata,with_wikipedia,with_text,coverage_pct
+films,7182,6681,6364,5916,82.4
+principals,21500,19426,18194,18175,84.5
