@@ -60,13 +60,14 @@ preparation and exploration functions and displays their results (open it from J
 ### 5. Data enrichment
 
 ```bash
-docker exec imdb-spark python -m src.enrichment.select_targets     # top 10 films per genre and year, 3 principals each
+docker exec imdb-spark python -m src.enrichment.select_targets     # top 10 films per genre and year, 5 candidate principals each
 docker exec imdb-spark python -m src.enrichment.fetch_wikipedia    # Wikidata + Wikipedia gathering (about 1h30, resumable)
 docker exec imdb-spark python -m src.enrichment.build_enriched     # cleaning, schema enforcement, join -> data/gold/
 ```
 
-`fetch_wikipedia` accepts `--limit N` for a quick test. Results: `data/gold/enriched_films`,
-`data/gold/enriched_principals` and `output/enrichment/*.csv`.
+`build_enriched` keeps three principals per film, those with a biography first. `fetch_wikipedia` accepts
+`--limit N` for a quick test; if it is interrupted, run it again and it resumes where it stopped. Results:
+`data/gold/enriched_films`, `data/gold/enriched_principals` and `output/enrichment/*.csv`.
 
 ### 6. Streaming
 
@@ -96,6 +97,17 @@ docker exec imdb-spark python -m src.streaming.report
 
 Results: `data/streaming/` (Parquet sinks and checkpoints) and `output/streaming/*.csv`.
 
+Before a new run, remove the previous outputs and checkpoints and empty the topic, otherwise the job resumes
+from the old checkpoints:
+
+```bash
+docker exec imdb-spark rm -rf /home/jovyan/project/data/streaming
+.venv/Scripts/python -m src.streaming.admin --reset
+```
+
+If the Spark job is stopped with Ctrl+C, it can keep running inside the container; stop it with
+`docker exec imdb-spark pkill -f imdb_wiki_stream`.
+
 ### 7. Open question
 
 ```bash
@@ -120,9 +132,7 @@ Tasks that relied on it:
 - Code of the pipeline modules under `src/` (ingestion, preparation, exploration, enrichment, streaming,
   open question) and of the notebook `notebooks/exploration.ipynb`
 - Debugging (out of memory errors, Wikidata rate limiting, original language lookup)
+- Explanations of the code to the group members
+- Git workflow: splitting work into commits, branches and pull requests, and help with review comments and
+  replies
 - Writing of `README.md` and of this execution guide
-
-Not used for: the explanations, reasoning and methodology write-ups of `REPORT.md`, which were written by the
-group members.
-
-TODO (group): review and adjust this list before submission.
