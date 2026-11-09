@@ -124,15 +124,13 @@ docker compose down
 
 ## AI / LLM usage declaration
 
-Tool used: **Claude Code** (Anthropic, Claude Opus 5.5 model), as a coding assistant.
+**Tool used:** Claude Code (Anthropic, Claude Opus 5.5 model), as a coding assistant.
 
-Tasks that relied on it:
+**How it was used:** We worked with Claude Code interactively by proposing our own architecture ideas and suggesting possible implementations. It helped us evaluate different approaches, make technical decisions, and improve our understanding of the code. It also assisted with writing and modifying code based on our requests. We ran the pipeline ourselves, checked the results, and reviewed each other's pull requests before merging.
 
-- Docker Compose environment and Spark configuration (including memory tuning for `title.principals`)
-- Code of the pipeline modules under `src/` (ingestion, preparation, exploration, enrichment, streaming,
-  open question) and of the notebook `notebooks/exploration.ipynb`
-- Debugging (out of memory errors, Wikidata rate limiting, original language lookup)
-- Explanations of the code to the group members
-- Git workflow: splitting work into commits, branches and pull requests, and help with review comments and
-  replies
-- Writing of `README.md` and of this execution guide
+**Tasks supported by the tool:**
+
+- Assistance with Docker Compose environment setup and Spark configuration, including memory tuning for `title.principals`.
+- Support in developing and improving the pipeline modules under `src/` and the notebook `notebooks/exploration.ipynb`.
+- Help with debugging issues, including out-of-memory errors, Wikidata rate limiting, and original language lookup.
+
