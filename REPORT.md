@@ -1,4 +1,4 @@
-# ECE Big Data Processing   IMDb project report
+# ECE Big Data Processing - IMDb project report
 
 ## 1. Data preparation
 
@@ -74,7 +74,7 @@ For the cleaning step, we had to apply a small set of explicit rules like: faile
 
 Here are some various ways the system work, depending on if we can bypass the issue or the possible explanations: Birth and death years are both nulled when death precedes birth (no possible explanation) but we did not remove the future-dated titles detected by the checks, because they may be announced releases, and titles without a genre remain available with an empty genre list.
 
-When the foreign key of a record key has no corresponding person or title, it is removed from the related fact or link table as it cannot be joined to a valid parent and the small deletion counts coicidences with the orphan counts from the quality report. By contrast, timeline anomalies in `title.principals` are retained with flags because the example records suggest that some of them are valid credits, such as archival appearances or music added to an older film. Downstream analyses can then exclude flagged records when their question requires a consistent timeline.
+When the foreign key of a record key has no corresponding person or title, it is removed from the related fact or link table as it cannot be joined to a valid parent and the number of records removed matches the orphan counts reported by the quality checks. By contrast, timeline anomalies in `title.principals` are retained with flags because the example records suggest that some of them are valid credits, such as archival appearances or music added to an older film. Downstream analyses can then exclude flagged records when their question requires a consistent timeline.
 
 The duplicate-removal rules are applied to the relevant identifiers even though the checks found no duplicate keys in this snapshot; this protects the pipeline if a later dataset version contains them. Ratings are kept only when they are in the 1–10 range and have at least one vote. The comma-separated director and writer fields are expanded into link tables, so each title-person relationship can be joined directly rather than parsed from a list in one cell. Episodes are kept only if both the episode and its parent exist and the parent is a series.
 
