@@ -18,7 +18,7 @@ The five columns with the highest missing-value percentages are:
 
 We figured these percentages do not all indicate a data-quality failure. For example, `endYear` is generally not applicable to films, and `deathYear` is unavailable for people who are still alive. Another example is that when a person’s birthYear is missing, we cannot calculate their age, so fewer people can be included in age-based analyses.
 
-False or non-sense data can be just as harmful as missing values as they can break the system or biais the results. Therefore, we also ran 31 checks for inconsistent values, duplicate keys and broken references between tables. The non-zero findings included:
+False or non-sense data can be just as harmful as missing values as they can break the system or insert bias in the results. Therefore, we also ran 31 checks for inconsistent values, duplicate keys and broken references between tables. The non-zero findings included:
 
 | Table | Check | Rows | Share of table |
 | ----- | ----- | ---: | -------------: |
@@ -37,7 +37,7 @@ False or non-sense data can be just as harmful as missing values as they can bre
 | `title.episode` | Parent title not found | 5 | 0.0001% |
 | `title.akas` | Title ID not found | 33 | 0.0001% |
 
-The checks identify values that may be incorrect, but we review them before deciding whether they should be changed or removed. For example, a person may be credited after their death because archival footage was used, or before a film's release because they contributed to a later re-release. They are also limits linked to IMDb that cannot represent consistently historical birth and death years.
+The checks identify values that may be incorrect, but we review them before deciding whether they should be changed or removed. For example, a person may be credited after their death because archival footage was used, or before a film's release because they contributed to a later re-release. There are also limits linked to IMDb that cannot represent consistently historical birth and death years.
 
 After all the cleaning processes, the row counts we end up with are:
 
@@ -60,7 +60,7 @@ We removed some rows from the fact and link tables, that corresponded to referen
 
 The data is distributed in a three layers. We converted the downloaded IMDb TSV files to Parquet in the bronze layer while keeping their fields as text so that a failed type conversion would not discard the original value. Missing markers (`\N`) were read as null. We then converted the fields needed by the pipeline to their expected types and normalized blank strings to null. During quality checks, the original text was also retained for fields being cast, making it possible to distinguish real missing value from values that were present but could not be converted.
 
-The bronze data was our "backup" as it remained unchanged and gives us a reference point if a cleaning rule needs to be revised. As mentioned before the project gave us the chance to work with Parquet which was more convenient for repeated Spark processing than the original compressed TSV files. The only dowside was that the project had to store another copy of the data.
+The bronze data was our "backup" as it remained unchanged and gives us a reference point if a cleaning rule needs to be revised. As mentioned before the project gave us the chance to work with Parquet which was more convenient for repeated Spark processing than the original compressed TSV files. The only downside was that the project had to store another copy of the data.
 
 #### Measuring missing values and checking quality
 
@@ -70,11 +70,11 @@ The quality checks cover value ranges and timelines, duplicate identifiers, and 
 
 #### Rules used for the silver layer
 
-For the cleaning step, we had to apply a small set of explicit rules like: failed casts and blank text become null or implausible dates or runtimes are nulled rather than guessed for example. When a value is changed this way, the row retains a `dq_flags` entry describing the issue which is usefull for keeping the system clear and understandable at any time. 
+For the cleaning step, we had to apply a small set of explicit rules like: failed casts and blank text become null or implausible dates or runtimes are nulled rather than guessed for example. When a value is changed this way, the row retains a `dq_flags` entry describing the issue which is useful for keeping the system clear and understandable at any time. 
 
 Here are some various ways the system work, depending on if we can bypass the issue or the possible explanations: Birth and death years are both nulled when death precedes birth (no possible explanation) but we did not remove the future-dated titles detected by the checks, because they may be announced releases, and titles without a genre remain available with an empty genre list.
 
-When the forign key of a record key has no corresponding person or title, it is removed from the related fact or link table as it cannot be joined to a valid parent and the small deletion counts concords with the orphan counts from the quality report. By contrast, timeline anomalies in `title.principals` are retained with flags because the example records suggest that some of them are valid credits, such as archival appearances or music added to an older film. Downstream analyses can then exclude flagged records when their question requires a consistent timeline.
+When the foreign key of a record key has no corresponding person or title, it is removed from the related fact or link table as it cannot be joined to a valid parent and the small deletion counts coicidences with the orphan counts from the quality report. By contrast, timeline anomalies in `title.principals` are retained with flags because the example records suggest that some of them are valid credits, such as archival appearances or music added to an older film. Downstream analyses can then exclude flagged records when their question requires a consistent timeline.
 
 The duplicate-removal rules are applied to the relevant identifiers even though the checks found no duplicate keys in this snapshot; this protects the pipeline if a later dataset version contains them. Ratings are kept only when they are in the 1–10 range and have at least one vote. The comma-separated director and writer fields are expanded into link tables, so each title-person relationship can be joined directly rather than parsed from a list in one cell. Episodes are kept only if both the episode and its parent exist and the parent is a series.
 
@@ -324,7 +324,7 @@ The five-minute tumbling-window query wrote six entity-type aggregates, covering
 
 ### Late arriving data and first impression
 
-Wa  had to make a decision regarding late arriving data. The stream uses event time—the timestamp supplied by Wikimedia rather than the time Spark happens to process a message. We set a two-minute watermark on `event_time` so Spark can handle the late events via windowed queries. Once the watermark has passed the end of a window, Spark writes that window's final aggregate and can discard its state. Events that arrive after their window has been finalized are excluded from those window counts and are collected by Spark's "watermark drop" metric.
+We had to make a decision regarding late arriving data. The stream uses event time—the timestamp supplied by Wikimedia rather than the time Spark happens to process a message. We set a two-minute watermark on `event_time` so Spark can handle the late events via windowed queries. Once the watermark has passed the end of a window, Spark writes that window's final aggregate and can discard its state. Events that arrive after their window has been finalized are excluded from those window counts and are collected by Spark's "watermark drop" metric.
 
 The two-minute delay was chosen to leave room for ordinary delivery delays without keeping window state open for too long. We considered it a good compromise. The measured average event-to-Kafka delay in the final run was 3.5 seconds, well below that allowance. The counterpart is that events delayed by more than the watermark can no longer update a closed window. The job also stopped before all event-time windows had closed: 115 of the 157 matches appear in the completed five-minute aggregates, while the remaining 42 remain available in the event-level output but are not included in a written window. If we had chosen a longer watermark, we could retain more late data, but it would delay the final output and retain more state (it could also leave more end-of-run windows unfinished).
 
