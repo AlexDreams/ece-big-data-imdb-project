@@ -1,4 +1,4 @@
-# ECE Big Data Processing   IMDb project report
+# ECE Big Data Processing – IMDb project report
 
 ## 1. Data preparation
 
@@ -334,22 +334,22 @@ The main limitation of this model is that, because a movie with multiple genres 
 
 In this question, we need to list the directors who have made one film rated 8 or higher and several others with an average rating of 6 or lower.
 
-To do this, we first compiled a list of film-director pairs—that is, a list of all the films each director has made, for every director. The films included in this list are those with more than 100 votes to ensure consistency between the rating and the number of votes.
+To do this, we first compiled a list of film-director pairs—that is, a list of all the films each director has made, for every director. The films included in this list are those with at least 100 votes to ensure consistency between the rating and the number of votes.
 
 From this list, we were able to determine the number of films each director had made and calculate the number of films they had directed that received a rating of 8 or higher. Next, we took all of their other films rated below 8 and calculated the average rating of all those films.
 
-Finally, we applied filters: the director must have exactly one film rated 8 or higher, so if the calculated number is greater than 1, we exclude that director. The same applies to films rated 6 or lower—there must be multiple such films, so we set a filter requiring at least two others to be rated 6 or lower.
+Finally, we applied filters: the director must have exactly one film rated 8 or higher, so if the calculated number is greater than 1, we exclude that director. The same applies to films rated 6 or lower—there must be multiple such films, so we set a filter requiring at least two other films whose average rating is 6 or lower.
 
 **Why**
 
-For this question, we applied several filters; the first is to include only films with more than 100 votes. We made this choice to ensure consistency between the number of votes and the rating assigned, so that we wouldn’t end up with films rated 9 but with only 5 votes.
+For this question, we applied several filters; the first is to include only films with at least 100 votes. We made this choice to ensure consistency between the number of votes and the rating assigned, so that we wouldn’t end up with films rated 9 but with only 5 votes.
 
 The other two filters were applied to meet the criteria of the question: each director must have only one film rated 8 or higher, so we had to ensure that this number is strictly equal to 1 for each director.
 At the same time, they must have several other films with an average rating of 6 or lower, which led us to eliminate all those who did not meet this requirement.
 
 **Alternatives and Trade-offs**
 
-The filter requiring a film to have more than 100 votes changes our results; it removes some directors and brings others to the forefront. To obtain an even more robust list of “one-hit directors,” we could also require a minimum number of films directed in their career to avoid including new directors who haven’t made many films yet.
+The filter requiring a film to have at least 100 votes changes our results; it removes some directors and brings others to the forefront. To obtain an even more robust list of “one-hit directors,” we could also require a minimum number of films directed in their career to avoid including new directors who haven’t made many films yet.
 
 #### Declining TV series (q5)
 
@@ -357,13 +357,13 @@ The filter requiring a film to have more than 100 votes changes our results; it 
 
 For this question, we first retrieved the season-episode pairs, which gave us a list of episodes along with the season number to which they are linked.
 
-Based on that, we were able to count the number of seasons as well as the number of episodes per season, and remove series with fewer than 3 seasons as well as series with fewer than 10 episodes across at least 3 seasons.
+Based on that, we were able to count the number of seasons as well as the number of episodes per season, and keep only series with at least 3 seasons of 10 or more episodes.
 
 Once that was done, we had to join the data with the ratings table to obtain the ratings for each episode. These ratings allowed us to apply the final filters and thus determine whether the highest-rated episode occurred during the first two seasons and whether the lowest-rated episode occurred during the last season. To determine this—for example, to verify that the worst episode is in the final season—we compared the worst episode of the final season with the worst episode of the entire series; if they had the same rating, then the worst episode was indeed in the final season; otherwise, it was not. We used the same logic to verify whether the best episode is in the first two seasons by comparing the best episode of the series with the best episode of the first two seasons.
 
 **Why**
 
-We included series with at least 10 episodes across 3 seasons, so at least 3 seasons must have more than 10 episodes. Not all of these episodes need to be rated; as long as the season has 10 episodes, it is included in the calculation even if the episodes in that season are not rated.
+We included series with at least 10 episodes across 3 seasons, so at least 3 seasons must have 10 or more episodes. Not all of these episodes need to be rated; as long as the season has 10 episodes, it is included in the calculation even if the episodes in that season are not rated.
 We’ve also allowed for ties. For example, if an episode is rated a 4 in both the first and last seasons, it will be counted as a series where the worst episode is in the last season.
 
 **Alternatives and trade-offs**
@@ -376,7 +376,7 @@ Similarly, ongoing seasons are treated as the latest season. An alternative coul
 
 **Method**
 
-To identify successful actors and actresses across multiple languages, we first need to define what constitutes a successful movie. In our case, we decided that a successful movie is one with a rating higher than 7 and at least 1,000 votes.
+To identify successful actors and actresses across multiple languages, we first need to define what constitutes a successful movie. In our case, we decided that a successful movie is one with a rating of 7.0 or higher and at least 1,000 votes.
 
 Next, we had to determine the film’s original language, which is not included in the IMDb dataset. We used Wikidata because a large number of the films listed there include the original language as well as an IMDb ID, allowing us to link the two databases. Once we retrieved the list of movies with their original languages, we kept only those with a single original language to prevent a movie from automatically counting toward two different languages.
 
@@ -384,7 +384,7 @@ After that, we were able to join the actors and movies to determine the list of 
 
 **Why**
 
-We decided to define a hit movie based on two criteria: a rating (which must be higher than 7) and the number of votes (more than 1,000). This was to avoid including movies with extremely high ratings but very few reviews, since such movies cannot really be considered hits in that case.
+We decided to define a hit movie based on two criteria: a rating (which must be 7.0 or higher) and the number of votes (at least 1,000). This was to avoid including movies with extremely high ratings but very few reviews, since such movies cannot really be considered hits in that case.
 
 We also decided to retrieve the data from the original language, since that seemed like the simplest approach to us—given that they have an identifier that allowed us to link them directly to our IMDb database without the risk of having to go through the title and making a mistake between two movies with the same title.
 
@@ -400,14 +400,14 @@ An alternative would have been to infer the original language based on the film�
 
 For this question, we had to find actors with careers spanning 20 years or more, who had appeared in at least 15 films, and whose best film was made early in their careers.
 
-First, we collected the data we needed for each actor—namely, their films (only those with more than 100 votes), the first and last years of their careers, the number of films they’ve made, and their highest-rated film.
-Once this data was collected, we could apply filters: first, we filtered to get all actors with 20-year careers (a simple subtraction of their starting year from their ending year) as well as those with more than 15 films to their credit.
+First, we collected the data we needed for each actor—namely, their films (only those with at least 100 votes), the first and last years of their careers, the number of films they’ve made, and their highest-rated film.
+Once this data was collected, we could apply filters: first, we filtered to get all actors with 20-year careers (a simple subtraction of their starting year from their ending year) as well as those with at least 15 films to their credit.
 To determine whether an actor’s best film was made early in their career, we established two criteria: the first was to look at their highest-rated film and determine whether it fell within the first third of their career; if so, they are considered to have made their best film early in their career. The second criterion was that the first half of their career must be better than the second half;
 
 
 **Why**
 
-Regarding the data collected for each actor, we chose to include only their films with more than 100 votes to prevent a film with very few ratings—and therefore very little recognition—from meeting the criteria for, say, a film’s rating at the end of their career.
+Regarding the data collected for each actor, we chose to include only their films with films with at least 100 votes to prevent a film with very few ratings—and therefore very little recognition—from meeting the criteria for, say, a film’s rating at the end of their career.
 Next, regarding our decision to establish these two criteria to avoid several issues: First, we considered the beginning of an actor’s career as the first third to determine whether their highest-rated film was released early on. However, we felt that this check alone was insufficient, so we examined both halves of their careers to see whether this best film stood alone or not (i.e., a single major film surrounded by weaker ones). We also considered that an actor who was more popular at the start of their career should have a first half with higher-rated films than the second half of their career.
 
 **Alternatives and trade-offs**
@@ -427,7 +427,7 @@ To facilitate further comparisons, we generated three main outputs: the first sh
 **Why**
 
 First, we compiled the various roles from different tables to ensure we didn’t miss any, and we removed duplicates once the compilation was complete to avoid counting the same person twice for the same role in the same film.
-We chose to classify a professional as “multi-talented” only if they had held multiple roles in at least three films, since directing a single film does not necessarily make someone a director—they need to have multiple experiences.
+We chose to classify a professional as “multi-talented” only if they had at least three films in each of at least two roles, since directing a single film does not necessarily make someone a director—they need to have multiple experiences.
 We decided to compare the person’s own accounts of their multi-role experiences with their single-role experiences to gain a better understanding of whether taking on multiple roles, rather than focusing on just one, has an impact on their performance.
 
 **Alternatives and Trade-offs**
@@ -768,7 +768,7 @@ We can then hypothesize that the director recasts the actor with whom the film w
 
 **Method**
 
-To try to answer the question as best as possible, we first compiled a list of all movies with more than 1,000 votes, along with their release years.
+To try to answer the question as best as possible, we first compiled a list of all movies with at least 1,000 votes, along with their release years.
 We then identified each pairing consisting of the director and one of the movie’s lead actors; each pairing is assigned a collaboration number, which allows us to list them in chronological order.
 We can then calculate a relative rating—that is, a rating for the film in which the pair in question appears, compared to the director’s typical ratings—to see the difference between the two.
 Finally, we excluded directors who made fewer than 5 films and grouped the pairs into two categories: recurring pairs (3 or more films together) and occasional pairs (1 or 2 films together).
@@ -779,7 +779,7 @@ In the end, four CSV files are generated: the first shows the average rating by 
 **Why**
 
 We included only movies with at least 1,000 votes to ensure reliable ratings, and movies well-known enough for the pairings to make sense.
-We also limited our analysis to lead actors (those listed first in the credits) to ensure that pairings with directors were meaningful and to avoid creating numerous pairings with supporting actors, which would not be particularly relevant to our research question.
+We also limited our analysis to lead actors (the first three in the credits) to ensure that pairings with directors were meaningful and to avoid creating numerous pairings with supporting actors, which would not be particularly relevant to our research question.
 We also chose to compare the films featuring the actor-director pair with the director’s other films to highlight the differences from that director’s other works.
 
 **Alternatives and trade-offs**
