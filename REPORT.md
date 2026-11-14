@@ -1,4 +1,4 @@
-# ECE Big Data Processing   IMDb project report
+# ECE Big Data Processing – IMDb project report
 
 ## 1. Data preparation
 
@@ -82,9 +82,359 @@ Our general goal was to favor traceability over aggressive correction that could
 
 ## 2. Data exploration
 
+This section answers the 8 exploratory questions on the topic, presenting the results graphically in a notebook using data from the “silver” layer (data from the IMDb tables that have been cleaned during data preparation).
+The code is located in src/exploration, with the questions.py file containing the code for all 8 questions.
+The complete results in CSV format are located in output/exploration, and the notebook with the tables and charts is located in notebooks/exploration.ipynb.
+To rerun the questions and refresh the notebook, simply run this command: docker exec imdb-spark python -m src.exploration.questions
+
+
 ### Results
 
+#### Runtime outliers by genre (q1)
+
+| Genre | Films | Avg runtime (min) | Std dev (min) | Outliers | Longer | Shorter |
+| ----- | ----: | ----------------: | ------------: | -------: | -----: | ------: |
+| Drama | 196,414 | 95.9 | 27.5 | 5,716 | 5,716 | 0 |
+| Documentary | 115,845 | 76.6 | 30.2 | 2,145 | 2,145 | 0 |
+| Comedy | 96,482 | 93.1 | 22.3 | 4,628 | 3,586 | 1,042 |
+| Romance | 42,414 | 99.1 | 25.1 | 2,042 | 1,813 | 229 |
+| Action | 40,300 | 101.1 | 31.3 | 1,146 | 1,146 | 0 |
+| Crime | 34,565 | 95.5 | 25.6 | 1,174 | 1,165 | 9 |
+| Thriller | 34,013 | 96.1 | 21.7 | 2,084 | 1,386 | 698 |
+| Horror | 30,667 | 88.6 | 22.3 | 700 | 696 | 4 |
+| Adventure | 24,031 | 93.0 | 30.6 | 633 | 633 | 0 |
+| Mystery | 16,457 | 93.9 | 24.8 | 449 | 446 | 3 |
+
+This table shows only the top 10 out of 27 genres
+
+#### Top 3 genres per year (q2)
+
+| Year | #1 | #2 | #3 |
+| ---: | -- | -- | -- |
+| 1980 | Drama | Adventure | Horror |
+| 1985 | Comedy | Adventure | Drama |
+| 1990 | Drama | Comedy | Crime |
+| 1995 | Drama | Crime | Comedy |
+| 2000 | Drama | Comedy | Adventure |
+| 2005 | Drama | Comedy | Action |
+| 2010 | Drama | Action | Adventure |
+| 2015 | Drama | Action | Adventure |
+| 2020 | Drama | Comedy | Action |
+| 2025 | Drama | Action | Comedy |
+
+This table shows the top 3 genres only for one out of every five years so as not to clutter the report.
+
+#### Top 3 genres compared to the rest (q3)
+
+| Group | Avg rating | Avg votes per film | Avg runtime (min) |
+| ----- | ---------: | -----------------: | ----------------: |
+| Top 3 | 6.04 | 7,895 | 100.4 |
+| Rest | 6.14 | 7,047 | 93.7 |
+
+| Genre | Years in top 3 (out of 46) |
+| ----- | -------------------------: |
+| Drama | 46 |
+| Comedy | 34 |
+| Action | 29 |
+| Adventure | 16 |
+| Crime | 9 |
+| Horror | 2 |
+| Thriller | 1 |
+| Sci-Fi | 1 |
+
+| Year | Top 3 vote share | Top 3 films | Rest films | Votes per film (top 3) | Votes per film (rest) |
+| ---: | ---------------: | ----------: | ---------: | ---------------------: | --------------------: |
+| 1980 | 44.4% | 1,355 | 2,304 | 5,686 | 4,192 |
+| 1990 | 45.6% | 2,159 | 2,139 | 6,443 | 7,765 |
+| 2000 | 45.0% | 2,434 | 2,856 | 11,637 | 12,135 |
+| 2010 | 40.0% | 4,099 | 8,329 | 10,742 | 7,937 |
+| 2020 | 44.8% | 5,444 | 8,522 | 4,241 | 3,336 |
+
+This table presents the results for one year out of every 10
+
+Based on these three tables of results, we can see that the top three genres account for between 38% and 58% of the votes, depending on the year, but they also represent, on average, 44% of the films produced that year.
+However, when it comes to the average ratings by genre, the top three genres score slightly lower than the rest.
+We can also see that certain genres appear more frequently than others, particularly drama, which is present in all 46 years of the study.
+The top three genres received more votes per film in only 26 out of 46 years, which shows that their ranking is primarily due to the number of films produced in those genres, rather than the fact that films in those genres are watched more frequently on an individual basis.
+
+#### One-hit directors (q4)
+
+| Director | Other movies | Avg rating (others) | Hit | Year | Hit rating |
+| -------- | -----------: | ------------------: | --- | ---: | ---------: |
+| Wai Keung Lau | 43 | 5.72 | Infernal Affairs | 2002 | 8.0 |
+| Mahesh Bhatt | 36 | 5.68 | Saaransh | 1984 | 8.1 |
+| Shaji Kailas | 35 | 5.33 | Aaram Thamburan | 1997 | 8.1 |
+| Puri Jagannadh | 33 | 5.52 | Pokiri | 2006 | 8.0 |
+| Sundar C. | 25 | 5.68 | Anbe Sivam | 2003 | 8.6 |
+| Suresh Krishna | 24 | 5.98 | Baasha | 1995 | 8.2 |
+| Robert Rodriguez | 23 | 5.9 | Sin City | 2005 | 8.0 |
+| Rabi Kinagi | 23 | 5.76 | Suna Panjuri | 1995 | 9.0 |
+| Smeep Kang | 22 | 5.84 | Carry on Jatta | 2012 | 8.3 |
+| John G. Avildsen | 21 | 5.78 | Rocky | 1976 | 8.1 |
+
+A total of 188 directors meet the criteria for this question. 
+
+#### Declining TV series (q5)
+
+| Series | Start year | Full seasons (≥10 ep.) | Last season | Best episode | Worst episode |
+| ------ | ---------: | ---------------------: | ----------: | -----------: | ------------: |
+| The Queen of Flow | 2018 | 3 | 3 | 9.8 | 1.1 |
+| One Punch Man | 2015 | 3 | 3 | 9.5 | 1.6 |
+| Celebrity Substitute | 2024 | 3 | 3 | 9.6 | 2.3 |
+| House of Cards | 2013 | 5 | 6 | 9.5 | 2.5 |
+| Family Law | 1999 | 3 | 3 | 9.4 | 2.7 |
+| The Gumby Show | 1956 | 3 | 3 | 8.1 | 1.4 |
+| All Dogs Go to Heaven: The Series | 1996 | 3 | 3 | 9.2 | 2.6 |
+| FRO Thizzle Reviews | 2022 | 5 | 5 | 10.0 | 3.6 |
+| Margarita | 2024 | 3 | 3 | 9.4 | 3.1 |
+| Soy Luna | 2016 | 4 | 4 | 9.1 | 2.8 |
+
+The results show that 639 series match the filters.
+There is no minimum number of votes per episode, so series with very few votes are included here as well.
+
+#### Success across languages (q6)
+
+| Step | Films |
+| ---- | ----: |
+| Successful films (rating ≥ 7.0, ≥ 1,000 votes) | 14,156 |
+| With an original language on Wikidata | 12,656 |
+| With a single original language (used) | 11,414 (80.6%) |
+
+| Actor | Languages | Language codes | Successful films |
+| ----- | --------: | -------------- | ---------------: |
+| Atul Kulkarni | 6 | hi, kn, ml, mr, ta, te | 12 |
+| Bruno Ganz | 6 | de, el, en, is, it, sv | 11 |
+| Amrish Puri | 5 | en, hi, ml, ta, te | 25 |
+| Max von Sydow | 5 | en, fr, it, no, sv | 23 |
+| Mukesh Rishi | 5 | hi, kn, mr, ta, te | 17 |
+| Genelia Deshmukh | 5 | hi, ml, mr, ta, te | 12 |
+| Dhritiman Chatterjee | 5 | bn, en, hi, ml, ta | 12 |
+| Franco Nero | 5 | de, en, es, it, sr | 10 |
+| Rohini Hattangadi | 5 | en, hi, mr, ta, te | 10 |
+| Jaya Prada | 5 | hi, kn, ml, ta, te | 8 |
+
+These data show that actors who are successful in multiple languages are quite rare; there are only 2,240 who are successful in two languages and 326 who are successful in three languages.
+It is also evident that many actors who are successful in multiple languages are Indian; for example, among those successful in three or more languages, 41% of the entries consist solely of Indian languages.
+
+#### Actors whose popularity peaked early (q7)
+
+| Actor | Career | Movies | Peak year | Peak rating | Avg 1st half | Avg 2nd half |
+| ----- | ------ | -----: | --------: | ----------: | -----------: | -----------: |
+| Veronica Lake | 1941–1970 | 20 | 1941 | 7.9 | 6.42 | 2.50 |
+| Mahesh Anand | 1988–2019 | 33 | 1991 | 7.4 | 5.47 | 1.90 |
+| Kanakalatha | 1986–2017 | 16 | 1993 | 7.9 | 6.48 | 2.93 |
+| Robert Woods | 1966–2016 | 22 | 1966 | 6.1 | 5.12 | 1.70 |
+| Artur Rolén | 1918–1967 | 20 | 1918 | 7.2 | 7.20 | 3.84 |
+| Aleksey Batalov | 1954–2007 | 16 | 1957 | 8.3 | 7.35 | 4.05 |
+| Ken Maynard | 1931–1970 | 19 | 1944 | 6.7 | 5.97 | 2.70 |
+| Norman Wisdom | 1953–2002 | 18 | 1963 | 6.9 | 6.31 | 3.20 |
+| Saroja Devi B. | 1958–2023 | 16 | 1977 | 8.9 | 8.01 | 5.07 |
+| Sadek Bachchu | 1994–2020 | 16 | 1997 | 8.2 | 8.05 | 5.17 |
+
+We can see that there are 4,495 actors who meet the criteria and that the median difference between the first half and the second half of their careers is only 0.55 points, which represents a slight decline.
+
+#### Multi-talented professionals (q8)
+
+| Career profile | Avg rating (multiple roles) | Titles | Avg rating (single role) | Titles |
+| -------------- | --------------------------: | -----: | -----------------------: | -----: |
+| actor + director | 5.69 | 897 | 5.98 | 9,839 |
+| actor + writer | 5.64 | 3,458 | 5.84 | 18,265 |
+| actor + director + writer | 5.87 | 11,309 | 5.88 | 20,894 |
+| director + writer | 6.00 | 40,809 | 5.97 | 30,680 |
+
+| People compared to themselves | Mean gap (multiple − single) | Better when combining roles |
+| ----------------------------: | ---------------------------: | --------------------------: |
+| 8,473 | +0.048 | 53.1% |
+
+| Person | Titles with multiple roles | Avg (multiple) | Avg (single) |
+| ------ | -------------------------: | -------------: | -----------: |
+| Woody Allen | 54 | 6.89 | 5.69 |
+| Satyajit Ray | 31 | 7.87 | 6.83 |
+| Charles Chaplin | 17 | 7.55 | 6.53 |
+| Quentin Tarantino | 15 | 7.71 | 6.68 |
+| Clint Eastwood | 25 | 6.91 | 6.83 |
+| Spike Lee | 19 | 6.43 | 6.92 |
+
+The first table shows that acting in a film in addition to directing or writing it results in slightly lower ratings (-0.29 for an actor-director, for example).
+The second table shows the effect on an individual basis, and the gap is almost zero (+0.048), which means that taking on multiple roles makes a person neither better nor worse.
+
 ### Methodological explanation
+
+
+#### Runtime outliers by genre (q1)
+
+**Method**
+First, we created a function called all_feature_movies() to retrieve all titles with the “movie” type that are longer than 40 minutes, regardless of whether they have a rating or not. Initially, I had only kept movies that had a rating, but since the question didn’t specify that they had to be rated, I removed that condition, which increased the number of movies in the results.
+
+We then pass all these movies through a function called movie_genres(), which “breaks down” the movies’ genres—that is, if a movie has three different genres, for example, it will be listed in three separate rows,
+one for each genre of the movie.
+
+Based on this genre filter, we can then group all the genres one by one and calculate statistics such as the number of movies in each genre, the average runtime of movies in that genre, and their standard deviation.
+
+Once this data by genre has been retrieved, we can calculate what’s called the z-score for each movie within each genre. The z-score indicates the number of standard deviations by which a value lies from the mean of the data. Once calculated, this z-score allows us to identify which movie durations differ from those of other movies in that genre; we determine whether the duration is different by comparing their z-scores, and if the absolute value of the z-score is greater than 2, then the movie is considered different.
+
+**Why**
+
+We’ve designated it this way for several reasons:
+
+First, the selection of films longer than 40 minutes is intended to distinguish between films considered feature-length (over 40 minutes) and short films (under 40 minutes). I also included films that aren’t rated—something I hadn’t done initially—since a rating has no bearing on a film’s runtime.
+
+Next, regarding the decision to use the z-score, there are several reasons. First, each genre will have a different average duration and standard deviation for duration, so it wouldn’t make sense to set a fixed threshold and apply it to every genre. Furthermore, the z-score allows us to obtain an adaptive result for each genre, and by applying a fixed threshold based on that result, it’s easier to identify films that stand out from the rest.
+
+Finally, I made sure that a film could be counted in different genres—not just its primary genre—because we’re analyzing by genre, and it wouldn’t make sense to exclude the film’s other genres.
+
+**Alternatives and trade-offs**
+
+The standard deviation—but especially the mean—is sensitive to outliers. Some films in these genres are 24 hours long, which significantly inflates the mean and can potentially skew the z-score, making it more
+difficult to distinguish between different films using the z-score. Instead, we could have used the median and the interquartile range, which are less sensitive to outliers.
+
+There are also genres with relatively few films, meaning their averages are unreliable for calculating the z-score.
+
+#### Top 3 genres per year (q2)
+
+**Method**
+
+In this question, we need to identify the three most popular genres each year from 1980 to 2025.
+
+To do this, as in the first question, we retrieved the list of movies longer than 40 minutes and then ran it through our function to split each movie into multiple lines, one for each
+different genre in which it is listed. The difference this time is that we need to consider popularity, so we must keep only the movies that have a rating in order to assess their popularity.
+
+We defined the popularity of a genre as the sum of the votes for the movies in that genre. Once this popularity was defined, all we had to do was sort each genre in descending order by popularity and display the top 3 genres for each year.
+
+**Why**
+
+We chose to measure popularity based on the total number of votes for films in a given genre; although we had considered other approaches, we felt this one was the most accurate. We had also considered measuring popularity based on
+the average rating rather than the total number of votes, but we ultimately decided that this method would reflect the film’s quality rather than its popularity. The same applies to another idea, which was to measure the number of films; however, that would have reflected production volume rather than popularity.
+Ultimately, we chose to measure popularity relative to the total number of votes, since this is the best way to gauge the level of engagement generated by films within a genre—which we felt was a better indicator of a genre’s popularity.
+
+**Alternatives and trade-offs**
+
+The biggest problem with our method is that the genres that produce the most films will inevitably receive more votes and will therefore be deemed more popular by our method. An alternative might have been to take into account the average votes per film. This would divide the total by the number of films, meaning that a genre would no longer be considered the most popular simply because it has produced the most films.
+
+#### Top 3 genres compared to the rest (q3)
+
+**Method**
+
+For this question, we used the results from the previous question to compare the top 3 most popular genres against the others.
+We therefore compare the top 3 with the rest of the genres in terms of the number of films, total votes, share of votes for the year, votes per film, as well as other metrics such as the average rating and average runtime for each group.
+Once these comparisons were made, we stored them in three separate CSV files: one for year-by-year comparisons, another for comparisons over the entire period, and a third for the number of years each genre spent in the top three.
+
+**Why**
+
+We selected various criteria for these comparisons to gain an overview of the share held by the top 3 in the film industry compared to other genres each year.
+The criteria are therefore the share of votes, to illustrate the concentration of popularity; votes per film, to isolate the volume effect of a genre and gauge people’s actual interest in each film; and, finally, ratings and runtime, which show whether popular genres differ in quality and format.
+
+**Alternatives and trade-offs**
+
+The main limitation of this model is that, because a movie with multiple genres is counted multiple times (once for each genre), it appears multiple times in the statistics. If, for example, one of its genres is in the top 3 and the other is not, it will count toward both categories. An alternative could be to classify a movie as belonging to only one genre (its primary genre), but this would result in the loss of a great deal of information, particularly regarding all the genres that serve as secondary genres.
+
+#### One-hit directors (q4)
+
+**Method**
+
+In this question, we need to list the directors who have made one film rated 8 or higher and several others with an average rating of 6 or lower.
+
+To do this, we first compiled a list of film-director pairs—that is, a list of all the films each director has made, for every director. The films included in this list are those with at least 100 votes to ensure consistency between the rating and the number of votes.
+
+From this list, we were able to determine the number of films each director had made and calculate the number of films they had directed that received a rating of 8 or higher. Next, we took all of their other films rated below 8 and calculated the average rating of all those films.
+
+Finally, we applied filters: the director must have exactly one film rated 8 or higher, so if the calculated number is greater than 1, we exclude that director. The same applies to films rated 6 or lower—there must be multiple such films, so we set a filter requiring at least two other films whose average rating is 6 or lower.
+
+**Why**
+
+For this question, we applied several filters; the first is to include only films with at least 100 votes. We made this choice to ensure consistency between the number of votes and the rating assigned, so that we wouldn’t end up with films rated 9 but with only 5 votes.
+
+The other two filters were applied to meet the criteria of the question: each director must have only one film rated 8 or higher, so we had to ensure that this number is strictly equal to 1 for each director.
+At the same time, they must have several other films with an average rating of 6 or lower, which led us to eliminate all those who did not meet this requirement.
+
+**Alternatives and Trade-offs**
+
+The filter requiring a film to have at least 100 votes changes our results; it removes some directors and brings others to the forefront. To obtain an even more robust list of “one-hit directors,” we could also require a minimum number of films directed in their career to avoid including new directors who haven’t made many films yet.
+
+#### Declining TV series (q5)
+
+**Method**
+
+For this question, we first retrieved the season-episode pairs, which gave us a list of episodes along with the season number to which they are linked.
+
+Based on that, we were able to count the number of seasons as well as the number of episodes per season, and keep only series with at least 3 seasons of 10 or more episodes.
+
+Once that was done, we had to join the data with the ratings table to obtain the ratings for each episode. These ratings allowed us to apply the final filters and thus determine whether the highest-rated episode occurred during the first two seasons and whether the lowest-rated episode occurred during the last season. To determine this—for example, to verify that the worst episode is in the final season—we compared the worst episode of the final season with the worst episode of the entire series; if they had the same rating, then the worst episode was indeed in the final season; otherwise, it was not. We used the same logic to verify whether the best episode is in the first two seasons by comparing the best episode of the series with the best episode of the first two seasons.
+
+**Why**
+
+We included series with at least 10 episodes across 3 seasons, so at least 3 seasons must have 10 or more episodes. Not all of these episodes need to be rated; as long as the season has 10 episodes, it is included in the calculation even if the episodes in that season are not rated.
+We’ve also allowed for ties. For example, if an episode is rated a 4 in both the first and last seasons, it will be counted as a series where the worst episode is in the last season.
+
+**Alternatives and trade-offs**
+
+Currently, there is no minimum number of votes per episode; one alternative could be to set a minimum number of votes per episode to make the list of returned series more robust, even if it results in fewer series.
+Similarly, ongoing seasons are treated as the latest season. An alternative could be to exclude ongoing seasons and include only completed ones.
+
+
+#### Success across languages (q6)
+
+**Method**
+
+To identify successful actors and actresses across multiple languages, we first need to define what constitutes a successful movie. In our case, we decided that a successful movie is one with a rating of 7.0 or higher and at least 1,000 votes.
+
+Next, we had to determine the film’s original language, which is not included in the IMDb dataset. We used Wikidata because a large number of the films listed there include the original language as well as an IMDb ID, allowing us to link the two databases. Once we retrieved the list of movies with their original languages, we kept only those with a single original language to prevent a movie from automatically counting toward two different languages.
+
+After that, we were able to join the actors and movies to determine the list of movies for each actor and then count the number of different languages and blockbuster movies in which they starred.
+
+**Why**
+
+We decided to define a hit movie based on two criteria: a rating (which must be 7.0 or higher) and the number of votes (at least 1,000). This was to avoid including movies with extremely high ratings but very few reviews, since such movies cannot really be considered hits in that case.
+
+We also decided to retrieve the data from the original language, since that seemed like the simplest approach to us—given that they have an identifier that allowed us to link them directly to our IMDb database without the risk of having to go through the title and making a mistake between two movies with the same title.
+
+**Alternatives and Trade-offs**
+
+Some of the films we considered to be hits were lost when we imported the data from Wikidata, since some have no registered languages while others have multiple ones. In total, about 19% of the hit films were lost.
+We also encountered an error regarding the Chinese language: Wikidata records some of these films as “Chinese” and others as “Mandarin,” even though they are the same language, which skews some results.
+An alternative would have been to infer the original language based on the film’s country of production, but this would have been imprecise, particularly for countries like India that have multiple languages.
+
+#### Actors whose popularity peaked early (q7)
+
+**Method**
+
+For this question, we had to find actors with careers spanning 20 years or more, who had appeared in at least 15 films, and whose best film was made early in their careers.
+
+First, we collected the data we needed for each actor—namely, their films (only those with at least 100 votes), the first and last years of their careers, the number of films they’ve made, and their highest-rated film.
+Once this data was collected, we could apply filters: first, we filtered to get all actors with 20-year careers (a simple subtraction of their starting year from their ending year) as well as those with at least 15 films to their credit.
+To determine whether an actor’s best film was made early in their career, we established two criteria: the first was to look at their highest-rated film and determine whether it fell within the first third of their career; if so, they are considered to have made their best film early in their career. The second criterion was that the first half of their career must be better than the second half;
+
+
+**Why**
+
+Regarding the data collected for each actor, we chose to include only their films with films with at least 100 votes to prevent a film with very few ratings—and therefore very little recognition—from meeting the criteria for, say, a film’s rating at the end of their career.
+Next, regarding our decision to establish these two criteria to avoid several issues: First, we considered the beginning of an actor’s career as the first third to determine whether their highest-rated film was released early on. However, we felt that this check alone was insufficient, so we examined both halves of their careers to see whether this best film stood alone or not (i.e., a single major film surrounded by weaker ones). We also considered that an actor who was more popular at the start of their career should have a first half with higher-rated films than the second half of their career.
+
+**Alternatives and trade-offs**
+
+The main trade-off in this approach is that we divided an actor’s career into halves based on the number of years, not the number of films. In fact, an actor might very well have made 20 films in 10 years and then only 5 films in 20 years, meaning that the second half of their career, as we define it, represents a very small sample of films, which could skew the results. An alternative would be to divide their career based on the number of films to avoid this.
+
+#### Multi-talented professionals (q8)
+
+**Method**
+
+For this question, a person was considered multi-talented if they had at least 3 films in each of at least 2 different roles.
+To identify this, we listed the possible roles, such as actors, directors, or screenwriters.
+Once this list was compiled, we counted, for each person, their films in each role. A person is considered multi-talented if they have at least 3 films in at least 2 roles.
+Next, for each film by a multi-talented person, we checked whether the person had only one role or multiple roles within each film. We then compare the average ratings of the two groups of films.
+To facilitate further comparisons, we generated three main outputs: the first showing the average rating of films in which the person plays multiple roles, the second comparing each person to themselves, and the third listing the top multi-talented individuals.
+
+**Why**
+
+First, we compiled the various roles from different tables to ensure we didn’t miss any, and we removed duplicates once the compilation was complete to avoid counting the same person twice for the same role in the same film.
+We chose to classify a professional as “multi-talented” only if they had at least three films in each of at least two roles, since directing a single film does not necessarily make someone a director—they need to have multiple experiences.
+We decided to compare the person’s own accounts of their multi-role experiences with their single-role experiences to gain a better understanding of whether taking on multiple roles, rather than focusing on just one, has an impact on their performance.
+
+**Alternatives and Trade-offs**
+
+The threshold of three films to be considered multi-talented isn’t necessarily the best; if we raised this threshold, we’d end up with only professionals in each specific role.
+An alternative to our method could be to compare multi-role performers with one another—that is, to compare actors-directors with each other rather than simply comparing multiple roles against a single role.
+
 
 ## 3. Data enrichment
 
@@ -360,6 +710,80 @@ As explained earlier, our two-minute watermark gives slightly delayed events tim
 
 ### Question and motivation
 
+The question we’ve chosen for this section is: Do director-actor duos who frequently work together receive higher ratings?
+
+In the world of cinema, there are always directors who are better known for their work with a particular actor than for the films they’ve made without him. We thought of duos like Martin Scorsese and Robert De Niro, who are very well known together but somewhat less so when they’re not working together.
+So we wondered whether working together actually improves the quality of the films because of the mutual understanding that develops between the duo, or whether it’s simply a matter of teaming up with the same person again because it worked well the first time.
+
+To do this, we didn’t use any external data—only IMDb data from the following tables:
+title_basics for the film genre and year, title_ratings for ratings and votes, title_directors for directors, title_principals to identify which actors appeared in which films, and finally the name_basics table for the names of the individuals (directors and actors).
+
+
 ### Results and key takeaways
 
+| Collaboration | Films | Duos | Avg rating | Rating vs director's mean | Avg votes |
+| ------------- | ----: | ---: | ---------: | ------------------------: | --------: |
+| 1st | 57,097 | 57,097 | 6.377 | +0.004 | 42,954 |
+| 2nd | 7,225 | 7,225 | 6.474 | +0.004 | 47,372 |
+| 3rd | 2,349 | 2,349 | 6.470 | −0.043 | 50,266 |
+| 4th | 1,029 | 1,029 | 6.481 | −0.042 | 50,701 |
+| 5th and more | 1,452 | 540 | 6.466 | −0.073 | 36,139 |
+
+| Duos with ≥ 2 films | Later films − first film (avg) | Duos improving |
+| ------------------: | -----------------------------: | -------------: |
+| 7,225 | −0.267 | 27.1% |
+
+| Genre | Occasional duos: films | Rating vs director's mean | Recurring duos: films | Rating vs director's mean |
+| ----- | ---------------------: | ------------------------: | --------------------: | ------------------------: |
+| Action | 12,183 | −0.116 | 2,592 | +0.078 |
+| Comedy | 20,521 | −0.085 | 4,166 | +0.044 |
+| Crime | 11,441 | +0.079 | 1,880 | +0.174 |
+| Drama | 36,678 | +0.069 | 4,950 | +0.158 |
+| Horror | 7,006 | −0.132 | 701 | +0.041 |
+| Sci-Fi | 2,950 | −0.249 | 433 | −0.028 |
+| Thriller | 8,489 | −0.053 | 942 | +0.119 |
+
+| Director | Actor | Films together | Avg rating | Vs director's mean | Years |
+| -------- | ----- | -------------: | ---------: | -----------------: | ----- |
+| Kartal Tibet | Kemal Sunal | 29 | 6.96 | +0.43 | 1976–1990 |
+| Gerald Thomas | Kenneth Williams | 23 | 6.11 | +0.13 | 1958–1978 |
+| Gerald Thomas | Sidney James | 21 | 6.27 | +0.28 | 1960–1974 |
+| Akira Kurosawa | Toshirō Mifune | 18 | 7.84 | +0.30 | 1948–1965 |
+| Priyadarshan | Mohanlal | 18 | 7.48 | +0.55 | 1985–2021 |
+| John Ford | John Wayne | 14 | 7.26 | +0.26 | 1939–1963 |
+
+Based on these results, we can make a few observations:
+
+The first is that the raw score rises slightly with collaborations, but when compared to the director’s average, the difference is virtually zero. This is mainly due to the fact that good directors often work with the same actors, which explains the slight increase in the score. Once this effect is accounted for, the difference is virtually zero.
+
+The second observation is that, within the same director-actor pairing, subsequent films are not as good as their first collaboration. On average, there is a difference of -0.27 points between their first film and the others, and only 27% of these pairings manage to improve.
+
+The final observation is that recurring duos generally perform better than occasional duos when compared to the director’s average rating for other films.
+
+We can therefore draw a certain conclusion from these observations: the first film by a duo that has stood the test of time is often a very good film.
+We can then hypothesize that the director recasts the actor with whom the film was a success, but the other films do not fare as well. However, if it works out again, the duo will often become a recurring one, built on the success of several films rather than just one—which explains why recurring duos perform better than occasional ones.
+
+
 ### Methodological explanation
+
+**Method**
+
+To try to answer the question as best as possible, we first compiled a list of all movies with at least 1,000 votes, along with their release years.
+We then identified each pairing consisting of the director and one of the movie’s lead actors; each pairing is assigned a collaboration number, which allows us to list them in chronological order.
+We can then calculate a relative rating—that is, a rating for the film in which the pair in question appears, compared to the director’s typical ratings—to see the difference between the two.
+Finally, we excluded directors who made fewer than 5 films and grouped the pairs into two categories: recurring pairs (3 or more films together) and occasional pairs (1 or 2 films together).
+
+In the end, four CSV files are generated: the first shows the average rating by collaboration number; the second shows the difference between recurring and occasional duos, by genre; the third compares, for each duo, the first collaboration with subsequent ones; and the last lists the 30 duos with the most films together.
+
+
+**Why**
+
+We included only movies with at least 1,000 votes to ensure reliable ratings, and movies well-known enough for the pairings to make sense.
+We also limited our analysis to lead actors (the first three in the credits) to ensure that pairings with directors were meaningful and to avoid creating numerous pairings with supporting actors, which would not be particularly relevant to our research question.
+We also chose to compare the films featuring the actor-director pair with the director’s other films to highlight the differences from that director’s other works.
+
+**Alternatives and trade-offs**
+
+However, we observed certain trade-offs. The first is that the director’s average counts some films multiple times; since we are considering director-lead actor pairings, a film with three lead actors will count three times in this average—once per pairing.
+We could also have measured success differently, such as by the number of votes, or using external data like box office receipts or awards.
+
