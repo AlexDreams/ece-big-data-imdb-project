@@ -4,7 +4,81 @@
 
 ### Results
 
+The IMDb snapshot used in this project contains a total of seven datasets. The first step was to measure missing values in the original data, before applying any cleaning rules. IMDb represents missing fields with `\N` (no value provided). However we found no fields that were empty strings or contained only spaces.
+
+The five columns with the highest missing-value percentages are:
+
+| Table.column | Missing (%) |
+| ------------ | -----------: |
+| `title.akas.attributes` | 99.472 |
+| `title.basics.endYear` | 98.732 |
+| `name.basics.deathYear` | 98.320 |
+| `name.basics.birthYear` | 95.658 |
+| `title.principals.job` | 80.691 |
+
+We figured these percentages do not all indicate a data-quality failure. For example, `endYear` is generally not applicable to films, and `deathYear` is unavailable for people who are still alive. Another example is that when a person’s birthYear is missing, we cannot calculate their age, so fewer people can be included in age-based analyses.
+
+False or non-sense data can be just as harmful as missing values as they can break the system or biais the results. Therefore, we also ran 31 checks for inconsistent values, duplicate keys and broken references between tables. The non-zero findings included:
+
+| Table | Check | Rows | Share of table |
+| ----- | ----- | ---: | -------------: |
+| `name.basics` | Death before birth | 27 | 0.0002% |
+| `name.basics` | Lifespan over 120 years | 2 | 0.0000% |
+| `name.basics` | No death year, birth before 1906 | 2,793 | 0.0177% |
+| `title.basics` | Runtime at or below zero | 4 | 0.0000% |
+| `title.basics` | Runtime over 24 hours | 209 | 0.0016% |
+| `title.basics` | Start year after 2026 | 5,213 | 0.0404% |
+| `title.basics` | Movies without a genre | 77,821 | 0.6032% |
+| `title.principals` | Person ID without a matching person | 7,174 | 0.0070% |
+| `title.principals` | Credited more than two years after death | 229,691 | 0.2240% |
+| `title.principals` | Credited before birth | 3,110 | 0.0030% |
+| `title.crew` | Director ID without a matching person | 420 | 0.0044% |
+| `title.crew` | Writer ID without a matching person | 1,146 | 0.0075% |
+| `title.episode` | Parent title not found | 5 | 0.0001% |
+| `title.akas` | Title ID not found | 33 | 0.0001% |
+
+The checks identify values that may be incorrect, but we review them before deciding whether they should be changed or removed. For example, a person may be credited after their death because archival footage was used, or before a film's release because they contributed to a later re-release. They are also limits linked to IMDb that cannot represent consistently historical birth and death years.
+
+After all the cleaning processes, the row counts we end up with are:
+
+| Silver table | Rows before | Rows after |
+| ------------ | ----------: | ---------: |
+| `name_basics` | 15,768,361 | 15,768,361 |
+| `title_basics` | 12,902,085 | 12,902,085 |
+| `title_ratings` | 1,726,141 | 1,726,141 |
+| `title_principals` | 102,539,871 | 102,532,697 |
+| `title_episode` | 9,980,994 | 9,980,989 |
+| `title_akas` | 59,957,982 | 59,957,949 |
+| `title_directors` | 9,569,644 | 9,569,224 |
+| `title_writers` | 15,203,836 | 15,202,690 |
+
+We removed some rows from the fact and link tables, that corresponded to references with no matching parent: 7,174 principal records, 5 episodes, 33 alternate-title records, 420 director links and 1,146 writer links.
+
 ### Methodological explanation
+
+#### From raw files to typed tables
+
+The data is distributed in a three layers. We converted the downloaded IMDb TSV files to Parquet in the bronze layer while keeping their fields as text so that a failed type conversion would not discard the original value. Missing markers (`\N`) were read as null. We then converted the fields needed by the pipeline to their expected types and normalized blank strings to null. During quality checks, the original text was also retained for fields being cast, making it possible to distinguish real missing value from values that were present but could not be converted.
+
+The bronze data was our "backup" as it remained unchanged and gives us a reference point if a cleaning rule needs to be revised. As mentioned before the project gave us the chance to work with Parquet which was more convenient for repeated Spark processing than the original compressed TSV files. The only dowside was that the project had to store another copy of the data.
+
+#### Measuring missing values and checking quality
+
+To produce our final missing-value report, we started to calculate from bronze data, before cleaning, so it describes the downloaded dataset rather than the result of our own transformations. A value counted as missing if it was null or blank. For efficiency, Spark aggregates all columns of a table together, avoiding a separate full scan for every column, so our large tables such as `title.principals` were easier to deal with.
+
+The quality checks cover value ranges and timelines, duplicate identifiers, and possible mismatching references between tables. For example, the checks look for impossible runtimes, dates that do not fit a person's timeline, and IDs in credit or episode tables that have no corresponding person or title. To resolve the "credits after death" problem, we choose to set up a two-year allowance, since a film can still be released if the filming is complete (we excluded the Archive-related credit categories in that check). The checks are indicative as a flagged row is not automatically treated as an error, since some apparent inconsistencies have legitimate explanations as we saw multiple times.
+
+#### Rules used for the silver layer
+
+For the cleaning step, we had to apply a small set of explicit rules like: failed casts and blank text become null or implausible dates or runtimes are nulled rather than guessed for example. When a value is changed this way, the row retains a `dq_flags` entry describing the issue which is usefull for keeping the system clear and understandable at any time. 
+
+Here are some various ways the system work, depending on if we can bypass the issue or the possible explanations: Birth and death years are both nulled when death precedes birth (no possible explanation) but we did not remove the future-dated titles detected by the checks, because they may be announced releases, and titles without a genre remain available with an empty genre list.
+
+When the forign key of a record key has no corresponding person or title, it is removed from the related fact or link table as it cannot be joined to a valid parent and the small deletion counts concords with the orphan counts from the quality report. By contrast, timeline anomalies in `title.principals` are retained with flags because the example records suggest that some of them are valid credits, such as archival appearances or music added to an older film. Downstream analyses can then exclude flagged records when their question requires a consistent timeline.
+
+The duplicate-removal rules are applied to the relevant identifiers even though the checks found no duplicate keys in this snapshot; this protects the pipeline if a later dataset version contains them. Ratings are kept only when they are in the 1–10 range and have at least one vote. The comma-separated director and writer fields are expanded into link tables, so each title-person relationship can be joined directly rather than parsed from a list in one cell. Episodes are kept only if both the episode and its parent exist and the parent is a series.
+
+Our general goal was to favor traceability over aggressive correction that could cause data compromisation.  Questionable data is either marked or set to unknown instead of being replaced with made up values. The trade-off is that nulling dates can lose information, especially for historical figures whose dates are difficult to represent, and later analyses must decide how to handle the flags. We also thought about dropping every flagged row, as a more radical approach, but that would also be risking discarding legitimate records.
 
 ## 2. Data exploration
 
@@ -102,7 +176,7 @@ Next, using `build_enriched`, we sort the candidates for each film by those who 
 
 Here’s why we designed it this way. The `numVotes` metric measures the attention a film receives. The problem with ratings is that a film rated 9.5 by 12 people would rank higher in the top list than a film that is better known and has 2 million votes averaging 8.0. We redefined our criteria to determine how we would rank films. In our view, this allows us to create a popularity-based top list, since it takes a film’s fame into greater consideration and views a film’s popularity as being measured by the number of votes.
 
-For the second guideline, we aimed to obtain at least 3 biographies per film by initially considering the top 3 credited people. However, some of them did not have an available Wikipedia biography, making it difficult to reach this goal. To improve the results, we expanded the selection to 5 candidates per film, prioritizing the most important credited people. This approach increased the number of films with 3 biographies from 5,298 to 5,985, demonstrating its effectiveness.
+For the second guideline, we aimed to obtain at least 3 biographies per film by initially considering the top 3 credited people. However, some of them did not have an available Wikipedia biography, making it difficult to reach this goal. To improve the results, we expanded the selection to 5 candidates per film, prioritizing the most important credited people. This way, we increased the number of films with 3 biographies from 5,298 to 5,985, demonstrating its effectiveness.
 
 **Alternatives and trade-offs**
 
@@ -203,12 +277,12 @@ Finally, the cleaned data is merged with the IMDb information (name_basics) and 
 
 **Why**
 
-This approach separates data collection from data cleaning to prevent Spark from sending multiple API requests in parallel, which would make it difficult to control the delays between requests. Using an explicit schema ensures consistent data types, while FAILFAST mode allows for rapid detection of format errors. Removing duplicates prevents repetitions caused by resuming the collection process, and cleaning the text corrects imperfections in the Wikipedia export. Finally, the Parquet format preserves data types and allows for the rapid generation of CSV files without having to redo the joins.
+This technique separates data collection from data cleaning to prevent Spark from sending multiple API requests in parallel, which would make it difficult to control the delays between requests. Using an explicit schema ensures consistent data types, while FAILFAST mode allows for rapid detection of format errors. Removing duplicates prevents repetitions caused by resuming the collection process, and cleaning the text corrects imperfections in the Wikipedia export. Finally, the Parquet format preserves data types and allows for the rapid generation of CSV files without having to redo the joins.
 
 
 **Alternatives and trade-offs**
 
-This approach has certain limitations. FAILFAST mode stops processing as soon as a line is malformed, while the 50-character threshold may exclude short but valid texts. Furthermore, regular expressions do not necessarily cover all possible cases. An alternative would be to use a permissive mode with error tracking or to adjust the text length threshold.
+However, this approach has certain limitations. FAILFAST mode stops processing as soon as a line is malformed, while the 50-character threshold may exclude short but valid texts. Furthermore, regular expressions do not necessarily cover all possible cases. An alternative would be to use a permissive mode with error tracking or to adjust the text length threshold.
 
 #### Scalability
 
@@ -230,9 +304,57 @@ An alternative would be to use Wikimedia dumps, which allow data to be processed
 
 ### Results
 
-### Late arriving data
+During the final run on 8 November 2026, the pipeline matched 157 Wikipedia change events to 116 distinct IMDb entities over a period of 18 minutes and 58 seconds. The average time between the Wikipedia event timestamp and its arrival in Kafka was 3.5 seconds.
+
+| Entity type | Human edits | Bot edits | Total |
+| ----------- | -----------: | --------: | ----: |
+| People | 75 | 3 | 78 |
+| Titles | 76 | 3 | 79 |
+| **Total** | **151** | **6** | **157** |
+
+The five-minute tumbling-window query wrote six entity-type aggregates, covering three completed time intervals:
+
+| Event-time window (UTC) | People | Titles | Total |
+| ---------------------- | ------: | -----: | ----: |
+| 15:20–15:25 | 5 | 10 | 15 |
+| 15:25–15:30 | 32 | 21 | 53 |
+| 15:30–15:35 | 22 | 25 | 47 |
+| **Total in written windows** | **59** | **56** | **115** |
+
+
+### Late arriving data and first impression
+
+Wa  had to make a decision regarding late arriving data. The stream uses event time—the timestamp supplied by Wikimedia rather than the time Spark happens to process a message. We set a two-minute watermark on `event_time` so Spark can handle the late events via windowed queries. Once the watermark has passed the end of a window, Spark writes that window's final aggregate and can discard its state. Events that arrive after their window has been finalized are excluded from those window counts and are collected by Spark's "watermark drop" metric.
+
+The two-minute delay was chosen to leave room for ordinary delivery delays without keeping window state open for too long. We considered it a good compromise. The measured average event-to-Kafka delay in the final run was 3.5 seconds, well below that allowance. The counterpart is that events delayed by more than the watermark can no longer update a closed window. The job also stopped before all event-time windows had closed: 115 of the 157 matches appear in the completed five-minute aggregates, while the remaining 42 remain available in the event-level output but are not included in a written window. If we had chosen a longer watermark, we could retain more late data, but it would delay the final output and retain more state (it could also leave more end-of-run windows unfinished).
 
 ### Methodological explanation
+
+#### Results window
+
+We chose a ten-minute sliding-window results for the pipeline, advancing every five minutes. Since these windows overlap, an event can contribute to more than one sliding-window aggregate as seen in class. The event-level matches, the window aggregates and the progress metrics were all written separately, so the detailed matches can be inspected independently of the summaries.
+
+#### Event source and Kafka ingestion
+
+Our producer listens to Wikimedia’s live recentchange feed and sends selected events to the Kafka topic wikistreams. It only keeps edits and new pages from article pages on the English, French, German, Spanish and Italian Wikipedias. We chose these filters to keep the amount of data manageable while still including several languages, which gives us a better chance of finding IMDb-related changes during a short run. Messages are keyed by page title, and if the connection drops the producer reconnects from the last event it received.
+
+#### Matching Wikipedia pages to IMDb
+
+Spark reads the Kafka messages as JSON and uses a defined schema to interpret their fields. It also creates a reference list from IMDb, including movies and series with at least 1,000 votes, plus the actors, actresses and directors credited on them. To compare IMDb names with Wikipedia page titles, Spark converts both to lowercase, removes extra spaces and drops any qualifier at the end, such as “(1995 film)” before joining the incoming events to the reference list using these normalized names.
+
+We used the 1,000-vote threshold to focus on more popular titles and keep the reference list manageable. If several IMDb entries have the same normalized name, the pipeline selects the one with the most votes and records how many candidates shared that name. It also checks qualifiers to avoid matching, for example, a song page to a film title. When a title has no qualifier, it must contain at least two words to be considered a match. These checks reduce false matches, but they can also exclude a valid one-word title or fail to resolve every namesake. Wikidata could provide more exact matches through identifiers, but looking up each event would require extra API requests. Fuzzy matching might find more pages, but could also introduce more incorrect matches.
+
+#### Windowed outputs and trade-offs
+
+We chose to run three streaming queries, triggered every 30 seconds. The first saves each matched event, including when it happened and when it reached Kafka. The other two summarize events by entity type: one uses fixed five-minute windows, while the other uses ten-minute windows that move forward every five minutes. For each window, we count events and distinct entities, separate human edits from bot edits, and calculate the net change in page size.
+
+We write the results to Parquet and use a separate checkpoint for each query, so the stream can resume if it is interrupted. To start a completely fresh run, we need to remove the old checkpoints and reset the Kafka topic.
+
+We also chose the append mode for the window queries, which means Spark writes each window once it considers it complete. This keeps the output simple, but windows that have not closed by the end of the run will not appear in the summaries. Finally, we included sliding windows to show recent activity over a longer period.
+
+#### Handling late events
+
+As explained earlier, our two-minute watermark gives slightly delayed events time to arrive, while still allowing Spark to close windows and clear their state. A longer watermark might include more late events in the window totals, but it would also delay those results and keep the state open longer. We also chose to use event time rather than processing time, so the windows reflect when the Wikipedia changes happened, not when Spark received them. The detailed matches are saved separately, so events that arrive too late for a window can still be found there.
 
 ## 5. Open question
 
